@@ -1,0 +1,8 @@
+RK3399_RSB4710A2_2G
+M:      Yunjin.Jiang <yunjin.jiang@advantech.com.cn>
+S:      Maintained
+F:      board/rockchip/advantech
+F:      include/configs/rk3399_rsb4710.h
+F:      configs/evb-rk3399_defconfig
+F:      configs/rk3399_rsb4710a2_2G_defconfig
+F:      configs/firefly-rk3399_defconfig

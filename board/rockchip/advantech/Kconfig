@@ -1,0 +1,25 @@
+if TARGET_RK3399_ADVANTECH
+
+config ARCH_ADVANTECH
+	bool "Support Advantech platform"
+
+config PLAT_RSB4710A2_2G
+	bool "Support RSB4710 A2"
+
+config SYS_BOARD
+	default "advantech"
+
+config SYS_VENDOR
+	default "rockchip"
+
+if PLAT_RSB4710A2_2G
+config SYS_CONFIG_NAME
+	default "rk3399_rsb4710"
+
+endif
+
+
+config BOARD_SPECIFIC_OPTIONS # dummy
+	def_bool y
+
+endif
