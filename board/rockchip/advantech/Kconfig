@@ -1,10 +1,15 @@
-if TARGET_RK3399_ADVANTECH
+if TARGET_ADVANTECH_RK3399
 
-config ARCH_ADVANTECH
-	bool "Support Advantech platform"
+choice
+	prompt "advantech rk3399 platform select"
 
 config PLAT_RSB4710A2_2G
-	bool "Support RSB4710 A2"
+	bool "Support rsb4710a2 2G"
+
+config PLAT_ROM5780A1_2G
+	bool "Support rom5780a1 2G"
+
+endchoice
 
 config SYS_BOARD
 	default "advantech"
@@ -18,6 +23,11 @@ config SYS_CONFIG_NAME
 
 endif
 
+if PLAT_ROM5780A1_2G
+config SYS_CONFIG_NAME
+	default "rk3399_rom5780"
+
+endif
 
 config BOARD_SPECIFIC_OPTIONS # dummy
 	def_bool y

@@ -21,6 +21,13 @@
 #include <linux/ctype.h>
 #include <linux/libfdt.h>
 #include <linux/types.h>
+#include <asm/global_data.h>
+#include <fdt_support.h>
+#include <exports.h>
+#include <fdtdec.h>
+#ifdef CONFIG_TARGET_ADVANTECH_RK3399
+#include <malloc.h>
+#endif
 
 /**
  * fdt_getprop_u32_default_node - Return a node's property or a default
@@ -276,6 +283,269 @@ int fdt_initrd(void *fdt, ulong initrd_start, ulong initrd_end)
 	return 0;
 }
 
+#ifdef CONFIG_TARGET_ADVANTECH_RK3399
+int fdtdec_get_alias_node(void *blob, const char *name)
+{
+	const char *prop;
+	int alias_node;
+	int len;
+
+	if (!blob)
+		return -FDT_ERR_BADPATH;
+	alias_node = fdt_path_offset(blob, "/aliases");
+	prop = fdt_getprop(blob, alias_node, name, &len);
+	if (!prop)
+		return -FDT_ERR_BADPATH;
+	return fdt_path_offset(blob, prop);
+}
+
+void adv_enable_status_by_alias_node(void *blob, const char *name)
+{
+	int node;
+	int err;
+	node = fdtdec_get_alias_node(blob, name);
+	if(node > 0)
+	{
+		err = fdt_setprop(blob, node, "status", "okay",sizeof("okay"));
+		if(err < 0)
+			printf("Enable %s status err = %d \n", name, err);
+	}
+	else
+	{
+		printf("Get %s status okay failed \n", name);
+	}
+}
+
+void adv_disable_status_by_alias_node(void *blob, const char *name)
+{
+	int node;
+	int err;
+	node = fdtdec_get_alias_node(blob, name);
+	if(node > 0)
+	{
+		err = fdt_setprop(blob, node, "status", "disabled",sizeof("disabled"));
+		if(err < 0)
+			printf("Disabled %s status err = %d \n", name, err);
+	}
+	else
+	{
+		printf("Get %s status disabled failed \n", name);
+	}
+}
+
+extern int fdt_node_offset_by_phandle_node(const void *fdt, int node, uint32_t phandle);
+static void adv_parse_drm_env(void *fdt)
+{
+	char *p, *e;
+	int node,node1,node2;
+	int use_dts_screen=0;
+	int phandle;
+
+	node = fdt_path_offset(fdt, "/display-timings");
+	use_dts_screen = fdtdec_get_int(fdt, node, "use-dts-screen", 0);
+	if(!use_dts_screen || env_get("use_env_screen")){
+		p = env_get("prmry_screen");
+		e = env_get("extend_screen");
+		if(!p || !e) {
+			phandle = fdt_getprop_u32_default_node(fdt, node, 0, "native-mode", -1);
+			if(-1 != phandle) {
+				node = fdt_node_offset_by_phandle_node(fdt, node, phandle);
+				env_set("extend_screen",fdt_get_name(fdt, node, NULL));
+			} else 
+				env_set("extend_screen","dp-default");
+			env_set("prmry_screen","hdmi-default");
+		}
+	} else {
+		phandle = fdt_getprop_u32_default_node(fdt, node, 0, "extend-screen", -1);
+		if(-1 != phandle)
+			node2 = fdt_node_offset_by_phandle_node(fdt, node, phandle);
+		else
+			node2 = 0;
+		phandle = fdt_getprop_u32_default_node(fdt, node, 0, "prmry-screen", -1);
+		if(-1 != phandle)
+			node1 = fdt_node_offset_by_phandle_node(fdt, node, phandle);
+		else
+			node1 = 0;
+		if((node2 > 0) && (node1 > 0)) {
+			env_set("extend_screen",fdt_get_name(fdt, node2, NULL));
+			env_set("prmry_screen",fdt_get_name(fdt, node1, NULL));
+		} else {
+			env_set("prmry_screen","hdmi-default");
+			env_set("extend_screen","dp-default");
+		}
+	}
+}
+
+static void adv_set_lcd_node(void *blob)
+{
+	char *e,*p;
+	int node;
+	int enable_vopb = 0;
+
+	node = fdt_path_offset(blob, "/fdt_dummy");
+	if(node)
+		fdt_delprop(blob, node, "value");
+
+	p = env_get("prmry_screen");
+	e = env_get("extend_screen");
+	if(p && e) {
+		// enable hdmi
+		// hdmi hdmi_in_vopb hdmi_in_vopl
+		// route_hdmi
+		if(!memcmp(p,"hdmi",4) || !memcmp(e,"hdmi",4)) {
+			adv_enable_status_by_alias_node(blob, "hdmi");
+			adv_enable_status_by_alias_node(blob, "hdmi_in_vopb");
+			adv_disable_status_by_alias_node(blob, "hdmi_in_vopl");
+			enable_vopb = 1;
+			//if(!memcmp(p,"hdmi",4))
+			//	adv_enable_status_by_alias_node(blob, "hdmi_route");
+		} else {
+			adv_disable_status_by_alias_node(blob, "hdmi");
+			adv_disable_status_by_alias_node(blob, "hdmi_in_vopb");
+			adv_disable_status_by_alias_node(blob, "hdmi_in_vopl");
+			adv_disable_status_by_alias_node(blob, "hdmi_sound");
+			adv_disable_status_by_alias_node(blob, "hdmi_i2s");
+			adv_disable_status_by_alias_node(blob, "hdmi_route");
+		}
+
+		// enable dp
+		// cdn_dp dp_in_vopb dp_in_vopl
+		if(!memcmp(p,"dp",2) || !memcmp(e,"dp",2)) {
+			adv_enable_status_by_alias_node(blob, "dp");
+			adv_enable_status_by_alias_node(blob, "vpd");
+			adv_disable_status_by_alias_node(blob, "dp_in_vopb");
+			adv_disable_status_by_alias_node(blob, "dp_in_vopl");
+			if(enable_vopb)
+				adv_enable_status_by_alias_node(blob, "dp_in_vopl");
+			else
+			{
+				adv_enable_status_by_alias_node(blob, "dp_in_vopb");
+				enable_vopb = 1;
+			}
+		}
+		else
+		{
+			adv_disable_status_by_alias_node(blob, "dp");
+			adv_disable_status_by_alias_node(blob, "vpd");
+			adv_disable_status_by_alias_node(blob, "dp_in_vopb");
+			adv_disable_status_by_alias_node(blob, "dp_in_vopl");
+
+			node = fdtdec_get_alias_node(blob, "dp_phy");
+			if(node)
+				fdt_delprop(blob, node, "extcon");
+		}
+
+		// enable edp
+		// edp edp_phy edp_panel edp_in_vopb edp_in_vopl
+		// backlight
+		// route_edp
+		if(!memcmp(p,"edp",3) || !memcmp(e,"edp",3)) {
+			adv_enable_status_by_alias_node(blob, "edp");
+			adv_enable_status_by_alias_node(blob, "edp_panel");
+			adv_disable_status_by_alias_node(blob, "edp_in_vopb");
+			adv_disable_status_by_alias_node(blob, "edp_in_vopl");
+			if(enable_vopb)
+				adv_enable_status_by_alias_node(blob, "edp_in_vopl");
+			else
+			{
+				adv_enable_status_by_alias_node(blob, "edp_in_vopb");
+				enable_vopb = 1;
+			}
+			adv_enable_status_by_alias_node(blob, "edp_backlight");
+			adv_enable_status_by_alias_node(blob, "edp_vcc");
+			adv_enable_status_by_alias_node(blob, "edp_bkl_vdd");
+			if(!memcmp(p,"edp",3))
+				adv_enable_status_by_alias_node(blob, "edp_route");
+			else
+			{
+				node = fdtdec_get_alias_node(blob, "edp_bkl_vdd");
+				if(node)
+				{
+					fdt_delprop(blob, node, "regulator-always-on");
+					fdt_delprop(blob, node, "regulator-boot-on");
+				}
+			}
+		}
+		else
+		{
+			adv_disable_status_by_alias_node(blob, "edp");
+			adv_disable_status_by_alias_node(blob, "edp_panel");
+			adv_disable_status_by_alias_node(blob, "edp_in_vopb");
+			adv_disable_status_by_alias_node(blob, "edp_in_vopl");
+			adv_disable_status_by_alias_node(blob, "edp_backlight");
+			adv_disable_status_by_alias_node(blob, "edp_vcc");
+			adv_disable_status_by_alias_node(blob, "edp_bkl_vdd");
+			adv_disable_status_by_alias_node(blob, "edp_route");
+		}
+
+		// enable lvds
+		// dsi dsi_in_vopb dsi_in_vopl
+		// backlight
+		// route_dsi
+		if(!memcmp(p,"lvds",4) || !memcmp(e,"lvds",4)) {
+			adv_enable_status_by_alias_node(blob, "dsi");
+			adv_enable_status_by_alias_node(blob, "dsi_backlight");
+			adv_enable_status_by_alias_node(blob, "dsi_vcc");
+			adv_enable_status_by_alias_node(blob, "dsi_vcc_io");
+			adv_enable_status_by_alias_node(blob, "lvds_pwr_vcc");
+			adv_enable_status_by_alias_node(blob, "lvds_bkl_vcc");
+			adv_disable_status_by_alias_node(blob, "dsi_in_vopb");
+			adv_disable_status_by_alias_node(blob, "dsi_in_vopl");
+			if(enable_vopb)
+				adv_enable_status_by_alias_node(blob, "dsi_in_vopl");
+			else
+			{
+				adv_enable_status_by_alias_node(blob, "dsi_in_vopb");
+				enable_vopb = 1;
+			}
+
+			if(!memcmp(p,"lvds",4))
+				adv_enable_status_by_alias_node(blob, "dsi_route");
+			else
+			{
+				node = fdtdec_get_alias_node(blob, "dsi_vcc");
+				if(node)
+				{
+					fdt_delprop(blob, node, "regulator-always-on");
+					fdt_delprop(blob, node, "regulator-boot-on");
+				}
+				node = fdtdec_get_alias_node(blob, "dsi_vcc_io");
+				if(node)
+				{
+					fdt_delprop(blob, node, "regulator-always-on");
+					fdt_delprop(blob, node, "regulator-boot-on");
+				}
+				node = fdtdec_get_alias_node(blob, "lvds_pwr_vcc");
+				if(node)
+				{
+					fdt_delprop(blob, node, "regulator-always-on");
+					fdt_delprop(blob, node, "regulator-boot-on");
+				}
+				node = fdtdec_get_alias_node(blob, "lvds_bkl_vcc");
+				if(node)
+				{
+					fdt_delprop(blob, node, "regulator-always-on");
+					fdt_delprop(blob, node, "regulator-boot-on");
+				}
+			}
+		}
+		else
+		{
+			adv_disable_status_by_alias_node(blob, "dsi");
+			adv_disable_status_by_alias_node(blob, "dsi_backlight");
+			adv_disable_status_by_alias_node(blob, "dsi_vcc");
+			adv_disable_status_by_alias_node(blob, "dsi_vcc_io");
+			adv_disable_status_by_alias_node(blob, "lvds_pwr_vcc");
+			adv_disable_status_by_alias_node(blob, "lvds_bkl_vcc");
+			adv_disable_status_by_alias_node(blob, "dsi_in_vopb");
+			adv_disable_status_by_alias_node(blob, "dsi_in_vopl");
+			adv_disable_status_by_alias_node(blob, "dsi_route");
+		}
+	}
+}
+#endif
+
+
 int fdt_chosen(void *fdt)
 {
 	/*
@@ -286,6 +556,11 @@ int fdt_chosen(void *fdt)
 	int   err;
 	int   i;
 	char  *str;		/* used to set string properties */
+#ifdef CONFIG_TARGET_ADVANTECH_RK3399
+	char *command_line = NULL, *e,*p;
+	uint len;
+	const char *prop = NULL;
+#endif
 	int dump;
 
 	dump = is_hotkey(HK_CMDLINE);
@@ -343,8 +618,97 @@ int fdt_chosen(void *fdt)
 				 */
 				env_delete("bootargs", "initrd=", 0);
 			}
-#endif
 		}
+
+#ifdef CONFIG_TARGET_ADVANTECH_RK3399
+		str = env_get("bootargs");
+		if(env_get("silent_linux")){
+			command_line = malloc(strlen(str)+sizeof("console=/dev/null")+1);
+			memset(command_line,0,strlen(str)+sizeof("console=/dev/null")+1);
+			p = str;
+			e = p;
+			p = strstr(p,"console=");
+			strncpy(command_line, e, p-e);
+			snprintf(command_line, strlen(command_line)+sizeof("console=/dev/null"),
+						"%sconsole=%s", command_line, "/dev/null");
+			len = strlen(command_line);
+			p = strstr(p," ");
+			strncpy(command_line+len, p, strlen(p));
+			command_line[strlen(command_line)] = '\0';
+			env_set("bootargs", command_line);
+			free(command_line);
+
+			//disable ttyFIQ0
+			adv_enable_status_by_alias_node(fdt, "serial2");
+			adv_disable_status_by_alias_node(fdt, "debug_console");
+			str = env_get("bootargs");
+		} else {
+			adv_enable_status_by_alias_node(fdt, "debug_console");
+			adv_disable_status_by_alias_node(fdt, "serial2");
+		}
+
+		if(env_get("androidboot.serialno")){
+			str = env_get("bootargs");
+			command_line = malloc(strlen(str)+100);
+			memset(command_line,0,strlen(str)+100);
+			memcpy(command_line,str,strlen(str));
+			strcat(command_line, " androidboot.serialno=");
+			strcat(command_line, env_get("androidboot.serialno"));
+			env_set("bootargs", command_line);
+			free(command_line);
+		}
+
+		if(env_get("androidboot.factorytime")){
+			str = env_get("bootargs");
+			command_line = malloc(strlen(str)+100);
+			memset(command_line,0,strlen(str)+100);
+			memcpy(command_line,str,strlen(str));
+			strcat(command_line, " androidboot.factorytime=");
+			strcat(command_line, env_get("androidboot.factorytime"));
+			env_set("bootargs", command_line);
+			free(command_line);
+		}
+
+		prop = fdt_getprop(fdt, 0, "model", NULL);
+		if(prop){
+			command_line = malloc(100);
+			memset(command_line,0,100);
+
+			p = env_get("boardsn");
+			e = strstr(prop," ");
+			memcpy(command_line,prop,e-prop);
+			if(p){
+				strcat(command_line, " ");
+				strcat(command_line, p);
+			} else {
+				//strcat(command_line, " unknown");
+				e = strrchr(prop,' ');
+				memcpy(command_line,prop,e-prop);
+			}
+
+			e = env_get("swversion");
+			if(e){
+				strcat(command_line, " ");
+				strcat(command_line, e);
+			} else {
+				e = strrchr(prop,' ');
+				strcat(command_line, e);
+			}
+
+			fdt_setprop(fdt, 0, "model", command_line,strlen(command_line)+1);
+			free(command_line);
+		}else
+			printf("can't find model node\n");
+
+		// set screen begin
+		adv_parse_drm_env(fdt);
+		adv_set_lcd_node(fdt);
+
+		nodeoffset = fdt_find_or_add_subnode(fdt, 0, "chosen");
+		if (nodeoffset < 0)
+			return nodeoffset;
+#endif
+#endif
 
 		str = env_get("bootargs");
 		err = fdt_setprop(fdt, nodeoffset, "bootargs", str,

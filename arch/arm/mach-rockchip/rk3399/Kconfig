@@ -11,7 +11,7 @@ config TARGET_EVB_RK3399
 	  with full function and phisical connectors support like type-C ports,
 	  usb2.0 host ports, LVDS, JTAG, MAC, SDcard, HDMI, USB-2-serial...
 
-config TARGET_RK3399_ADVANTECH
+config TARGET_ADVANTECH_RK3399
 	bool "RK3399 Advantech board"
 	select BOARD_LATE_INIT
 	help
