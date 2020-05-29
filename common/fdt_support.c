@@ -557,7 +557,7 @@ int fdt_chosen(void *fdt)
 	int   i;
 	char  *str;		/* used to set string properties */
 #ifdef CONFIG_TARGET_ADVANTECH_RK3399
-	char *command_line = NULL, *e,*p;
+	char command_line[1024],*e,*p;
 	uint len;
 	const char *prop = NULL;
 #endif
@@ -623,8 +623,7 @@ int fdt_chosen(void *fdt)
 #ifdef CONFIG_TARGET_ADVANTECH_RK3399
 		str = env_get("bootargs");
 		if(env_get("silent_linux")){
-			command_line = malloc(strlen(str)+sizeof("console=/dev/null")+1);
-			memset(command_line,0,strlen(str)+sizeof("console=/dev/null")+1);
+			memset(command_line,0,sizeof(command_line));
 			p = str;
 			e = p;
 			p = strstr(p,"console=");
@@ -636,7 +635,6 @@ int fdt_chosen(void *fdt)
 			strncpy(command_line+len, p, strlen(p));
 			command_line[strlen(command_line)] = '\0';
 			env_set("bootargs", command_line);
-			free(command_line);
 
 			//disable ttyFIQ0
 			adv_enable_status_by_alias_node(fdt, "serial2");
@@ -649,30 +647,43 @@ int fdt_chosen(void *fdt)
 
 		if(env_get("androidboot.serialno")){
 			str = env_get("bootargs");
-			command_line = malloc(strlen(str)+100);
-			memset(command_line,0,strlen(str)+100);
+			memset(command_line,0,sizeof(command_line));
 			memcpy(command_line,str,strlen(str));
 			strcat(command_line, " androidboot.serialno=");
 			strcat(command_line, env_get("androidboot.serialno"));
 			env_set("bootargs", command_line);
-			free(command_line);
 		}
 
 		if(env_get("androidboot.factorytime")){
 			str = env_get("bootargs");
-			command_line = malloc(strlen(str)+100);
-			memset(command_line,0,strlen(str)+100);
+			memset(command_line,0,sizeof(command_line));
 			memcpy(command_line,str,strlen(str));
 			strcat(command_line, " androidboot.factorytime=");
 			strcat(command_line, env_get("androidboot.factorytime"));
 			env_set("bootargs", command_line);
-			free(command_line);
+		}
+	
+		if(env_get("uart_mode")){
+			e = env_get("bootargs");
+			memset(command_line,0,sizeof(command_line));
+			memcpy(command_line,e,strlen(e));
+			strcat(command_line, " uart_mode=");
+			strcat(command_line, env_get("uart_mode"));
+			env_set("bootargs", command_line);
+		}
+
+		if(env_get("eth1addr")){
+			e = env_get("bootargs");
+			memset(command_line,0,sizeof(command_line));
+			memcpy(command_line,e,strlen(e));
+			strcat(command_line, " usblan_addr=");
+			strcat(command_line, env_get("eth1addr"));
+			env_set("bootargs", command_line);
 		}
 
 		prop = fdt_getprop(fdt, 0, "model", NULL);
 		if(prop){
-			command_line = malloc(100);
-			memset(command_line,0,100);
+			memset(command_line,0,sizeof(command_line));
 
 			p = env_get("boardsn");
 			e = strstr(prop," ");
@@ -696,17 +707,30 @@ int fdt_chosen(void *fdt)
 			}
 
 			fdt_setprop(fdt, 0, "model", command_line,strlen(command_line)+1);
-			free(command_line);
 		}else
 			printf("can't find model node\n");
 
 		// set screen begin
 		adv_parse_drm_env(fdt);
-		adv_set_lcd_node(fdt);
+		e = env_get("bootargs");
+		memset(command_line,0,sizeof(command_line));
+		memcpy(command_line,e,strlen(e));
 
-		nodeoffset = fdt_find_or_add_subnode(fdt, 0, "chosen");
-		if (nodeoffset < 0)
-			return nodeoffset;
+		p = env_get("prmry_screen");
+		e = env_get("extend_screen");
+		if(p && e) {
+			strcat(command_line, " prmry_screen=");
+			strcat(command_line, p);
+			strcat(command_line, " extend_screen=");
+			strcat(command_line, e);
+			env_set("bootargs", command_line);
+			adv_set_lcd_node(fdt);
+
+			/* find or create "/chosen" node. */
+			nodeoffset = fdt_find_or_add_subnode(fdt, 0, "chosen");
+			if (nodeoffset < 0)
+				return nodeoffset;
+		}
 #endif
 #endif
 

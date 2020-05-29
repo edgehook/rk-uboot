@@ -884,8 +884,12 @@ static init_fnc_t init_sequence_r[] = {
 #ifdef CONFIG_MMC
 	initr_mmc,
 #endif
+#ifdef CONFIG_TARGET_ADVANTECH_RK3399
+	initr_env,
+#else
 #ifndef CONFIG_USING_KERNEL_DTB
 	initr_env,
+#endif
 #endif
 #ifdef CONFIG_SYS_BOOTPARAMS_LEN
 	initr_malloc_bootparams,
