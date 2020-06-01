@@ -21,6 +21,8 @@
 #define CONFIG_MISC_INIT_R
 #define CONFIG_SERIAL_TAG
 #define CONFIG_ENV_OVERWRITE
+
+#define CONFIG_HAS_ETH1
 #define FDT_SEQ_MACADDR_FROM_ENV
 
 #define CONFIG_BMP_16BPP
@@ -30,5 +32,13 @@
 #define ROCKCHIP_DEVICE_SETTINGS \
 		"stdout=serial,vidconsole\0" \
 		"stderr=serial,vidconsole\0"
+
+#ifdef CONFIG_DM_CHARGE_DISPLAY
+/*#undef CONFIG_DM_CHARGE_DISPLAY*/
+#endif
+
+#ifdef CONFIG_USING_KERNEL_DTB
+#undef CONFIG_USING_KERNEL_DTB
+#endif
 
 #endif
