@@ -15,7 +15,7 @@
 
 / {
 	model = "Advantech RK3399 RSB4710 Board";
-	compatible = "rockchip,rk3399-rsb4710", "rockchip,rk3399";
+	compatible = "advantech-rsb4710", "rockchip,rk3399";
 
 	vcc3v3_sys: vcc3v3-sys {
 		compatible = "regulator-fixed";
@@ -37,16 +37,6 @@
 		enable-active-high;
 	};
 
-	vcc5v0_host: vcc5v0-host-regulator {
-		compatible = "regulator-fixed";
-		enable-active-high;
-		gpio = <&gpio4 29 GPIO_ACTIVE_HIGH>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&host_vbus_drv>;
-		regulator-name = "vcc5v0_host";
-		regulator-always-on;
-	};
-
 	vcc5v0_sys: vcc5v0-sys {
 		compatible = "regulator-fixed";
 		regulator-name = "vcc5v0_sys";
@@ -54,18 +44,6 @@
 		regulator-boot-on;
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
-	};
-
-	vcc_sd: vcc-sd {
-		compatible = "regulator-fixed";
-		enable-active-high;
-		gpio = <&gpio0 1 GPIO_ACTIVE_HIGH>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&vcc_sd_h>;
-		regulator-name = "vcc_sd";
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-		regulator-boot-on;
 	};
 
 	vcc_phy: vcc-phy-regulator {
