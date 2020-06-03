@@ -41,4 +41,6 @@
 #undef CONFIG_USING_KERNEL_DTB
 #endif
 
+#define CONFIG_BOARD_EARLY_INIT_F
+
 #endif

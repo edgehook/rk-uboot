@@ -40,4 +40,7 @@
 #undef CONFIG_USING_KERNEL_DTB
 #endif
 
+#define CONFIG_BOARD_EARLY_INIT_F
+#define ADV_GRF_IO_VSEL	0xB000B
+
 #endif

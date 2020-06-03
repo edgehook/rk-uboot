@@ -17,11 +17,44 @@
 #include <usb.h>
 #include <dwc3-uboot.h>
 #include <spl.h>
+#include <asm/arch/grf_rk3399.h>
+#include <asm/arch/cru_rk3399.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
 #define RK3399_CPUID_OFF  0x7
 #define RK3399_CPUID_LEN  0x10
+#define GRF_BASE	0xff770000
+
+int board_early_init_f(void)
+{
+#ifdef ADV_GRF_IO_VSEL
+	struct rk3399_grf_regs * const grf = (void *)GRF_BASE;
+
+	grf->io_vsel = ADV_GRF_IO_VSEL;
+#endif
+
+#ifdef CONFIG_SWITCH_DEBUG_PORT_TO_UART
+	gpio_direction_input(DEBUG_SWITCH_GPIO);
+	if (gpio_get_value(DEBUG_SWITCH_GPIO) == DEBUG_SWITCH_GPIO_ACTIVE) {
+		gd->flags |= GD_FLG_DISABLE_CONSOLE;
+		//reconfig iomux to defalt gpio
+		grf_writel(0xf << 22, GRF_GPIO4C_IOMUX);
+	}
+#endif
+
+#ifdef CONFIG_RESET_PMIC_GPIO
+	//if(SYS_LOADER_REBOOT_FLAG == IReadLoaderFlag())
+	{
+		gpio_direction_output(CONFIG_RESET_PMIC_GPIO,1);
+		mdelay(5);
+		gpio_direction_output(CONFIG_RESET_PMIC_GPIO,0);
+		mdelay(500);
+	}
+#endif
+
+	return 0;
+}
 
 int rk_board_init(void)
 {
