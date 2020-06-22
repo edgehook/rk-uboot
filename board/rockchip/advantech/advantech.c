@@ -17,6 +17,9 @@
 #include <usb.h>
 #include <dwc3-uboot.h>
 #include <spl.h>
+#include <boot_rkimg.h>
+#include <version.h>
+#include <asm/gpio.h>
 #include <asm/arch/grf_rk3399.h>
 #include <asm/arch/cru_rk3399.h>
 
@@ -58,7 +61,7 @@ int board_early_init_f(void)
 
 int rk_board_init(void)
 {
-	struct udevice *pinctrl, *regulator;
+	struct udevice *pinctrl;
 	int ret;
 
 	/*
@@ -68,79 +71,31 @@ int rk_board_init(void)
 	 */
 	ret = uclass_get_device(UCLASS_PINCTRL, 0, &pinctrl);
 	if (ret) {
-		debug("%s: Cannot find pinctrl device\n", __func__);
+		printf("%s: Cannot find pinctrl device\n", __func__);
 		goto out;
 	}
 
 	/* Enable pwm0 for panel backlight */
 	ret = pinctrl_request_noflags(pinctrl, PERIPH_ID_PWM0);
 	if (ret) {
-		debug("%s PWM0 pinctrl init fail! (ret=%d)\n", __func__, ret);
+		printf("%s PWM0 pinctrl init fail! (ret=%d)\n", __func__, ret);
+		goto out;
+	}
+
+	ret = pinctrl_request_noflags(pinctrl, PERIPH_ID_PWM1);
+	if (ret) {
+		printf("%s PWM1 pinctrl init fail!\n", __func__);
 		goto out;
 	}
 
 	ret = pinctrl_request_noflags(pinctrl, PERIPH_ID_PWM2);
 	if (ret) {
-		debug("%s PWM2 pinctrl init fail!\n", __func__);
-		goto out;
-	}
-
-	ret = pinctrl_request_noflags(pinctrl, PERIPH_ID_PWM3);
-	if (ret) {
-		debug("%s PWM3 pinctrl init fail!\n", __func__);
-		goto out;
-	}
-
-	ret = regulator_get_by_platname("vcc5v0_host", &regulator);
-	if (ret) {
-		debug("%s vcc5v0_host init fail! ret %d\n", __func__, ret);
-		goto out;
-	}
-
-	ret = regulator_set_enable(regulator, true);
-	if (ret) {
-		debug("%s vcc5v0-host-en set fail!\n", __func__);
+		printf("%s PWM2 pinctrl init fail!\n", __func__);
 		goto out;
 	}
 
 out:
 	return 0;
-}
-
-static void setup_macaddr(void)
-{
-#if CONFIG_IS_ENABLED(CMD_NET)
-	int ret;
-	const char *cpuid = env_get("cpuid#");
-	u8 hash[SHA256_SUM_LEN];
-	int size = sizeof(hash);
-	u8 mac_addr[6];
-
-	/* Only generate a MAC address, if none is set in the environment */
-	if (env_get("ethaddr"))
-		return;
-
-	if (!cpuid) {
-		debug("%s: could not retrieve 'cpuid#'\n", __func__);
-		return;
-	}
-
-	ret = hash_block("sha256", (void *)cpuid, strlen(cpuid), hash, &size);
-	if (ret) {
-		debug("%s: failed to calculate SHA256\n", __func__);
-		return;
-	}
-
-	/* Copy 6 bytes of the hash to base the MAC address on */
-	memcpy(mac_addr, hash, 6);
-
-	/* Make this a valid MAC address and set it */
-	mac_addr[0] &= 0xfe;  /* clear multicast bit */
-	mac_addr[0] |= 0x02;  /* set local assignment bit (IEEE802) */
-	eth_env_set_enetaddr("ethaddr", mac_addr);
-#endif
-
-	return;
 }
 
 static void setup_serial(void)
@@ -196,10 +151,100 @@ static void setup_serial(void)
 	return;
 }
 
+int rk_board_late_init(void)
+{
+	struct blk_desc *dev_desc;
+	const char *part_name;
+	disk_partition_t part_info;
+	unsigned char *buf;
+	u32 blk_cnt;
+	int ret;
+	unsigned char version[10];
+	u32 valid;
+	int sn_len,time_len,info_len;
+
+	/* Get partition info */
+	dev_desc = rockchip_get_bootdev();
+	if (!dev_desc) {
+		printf("%s: dev_desc is NULL!\n", __func__);
+		return -ENODEV;
+	}
+
+	part_name = BOARD_INFO_NAME;
+	ret = part_get_info_by_name(dev_desc, part_name, &part_info);
+	if (ret < 0) {
+		printf("%s: failed to get %s part info, ret=%d\n",
+		       __func__, part_name, ret);
+		return ret;
+	}
+
+	blk_cnt = DIV_ROUND_UP(512, dev_desc->blksz);
+	buf = memalign(ARCH_DMA_MINALIGN, part_info.blksz*blk_cnt);
+	if (!buf) {
+		printf("%s: out of memory!\n", __func__);
+		return -ENOMEM;
+	}
+
+	ret = blk_dread(dev_desc, part_info.start, blk_cnt, buf);
+	if (ret != blk_cnt) {
+		printf("%s: failed to read %s hdr!\n", __func__, part_name);
+		goto out;
+	}
+
+	valid = is_valid_ethaddr(buf);
+	if (valid)
+		eth_env_set_enetaddr("ethaddr", buf);
+	else {
+		puts("Skipped eth0addr assignment due to invalid,using default!\n");
+		goto out;
+	}
+
+	valid = is_valid_ethaddr(&buf[6]);
+	if (valid)
+		eth_env_set_enetaddr("eth1addr", &buf[6]);
+	else
+		puts("Skipped eth1addr assignment due to invalid,using default!\n");
+
+	sn_len = buf[12];
+	time_len = buf[13+sn_len];
+	info_len = buf[14+sn_len+time_len];
+	if(sn_len && (sn_len <= 20)) {
+		buf[13+sn_len] = '\0';
+		env_set("boardsn", (const char *)(buf+13));
+		if(time_len && (time_len == 8)) {
+			buf[14+sn_len+time_len] = '\0';
+			env_set("androidboot.factorytime", (const char *)(buf+14+sn_len));
+			if(info_len && (info_len <= 0x40)) {
+				buf[15+sn_len+time_len+info_len] = '\0';
+				env_set("androidboot.serialno", (const char *)(buf+15+sn_len+time_len));
+			}else
+				env_set("androidboot.serialno", NULL);
+		}else {
+			env_set("androidboot.factorytime", NULL);
+			env_set("androidboot.serialno", NULL);
+		}
+	} else {
+		env_set("boardsn", NULL);
+		env_set("androidboot.factorytime", NULL);
+		env_set("androidboot.serialno", NULL);
+	}
+
+	memset(version,0,sizeof(version));
+	snprintf((char *)version,sizeof(version),"%s",strrchr(PLAIN_VERSION,'V'));
+	if(version[0]=='V')
+		env_set("swversion",(const char *)version);
+	else
+		env_set("swversion",NULL);
+
+out:
+	free(buf);
+
+	return 0;
+}
+
 int misc_init_r(void)
 {
 	setup_serial();
-	setup_macaddr();
 
 	return 0;
 }
