@@ -52,7 +52,4 @@
 #define CONFIG_BOARD_EARLY_INIT_F
 #define ADV_GRF_IO_VSEL	0xB000B
 
-/* reset M2 interface */
-#define M2_RESET_GPIO0	(2*32+28) 
-
 #endif
