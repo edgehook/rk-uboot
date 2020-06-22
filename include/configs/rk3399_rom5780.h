@@ -40,7 +40,19 @@
 #undef CONFIG_USING_KERNEL_DTB
 #endif
 
+#ifdef CONFIG_ENV_SIZE
+#undef CONFIG_ENV_SIZE
+#define CONFIG_ENV_SIZE 0x1000
+#endif
+
+#ifdef CONFIG_ROCKCHIP_VENDOR_PARTITION
+#undef CONFIG_ROCKCHIP_VENDOR_PARTITION
+#endif
+
 #define CONFIG_BOARD_EARLY_INIT_F
 #define ADV_GRF_IO_VSEL	0xB000B
+
+/* reset M2 interface */
+#define M2_RESET_GPIO0	(2*32+28) 
 
 #endif
