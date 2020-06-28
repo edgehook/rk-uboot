@@ -19,30 +19,40 @@
 #include <spl.h>
 #include <boot_rkimg.h>
 #include <version.h>
+#include <irq-platform.h>
 #include <asm/gpio.h>
 #include <asm/arch/grf_rk3399.h>
 #include <asm/arch/cru_rk3399.h>
+#include <asm/arch/gpio.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
 #define RK3399_CPUID_OFF  0x7
 #define RK3399_CPUID_LEN  0x10
 #define GRF_BASE	0xff770000
+#define PMUGRF_BASE	0xff320000
 
 int board_early_init_f(void)
 {
-#ifdef ADV_GRF_IO_VSEL
 	struct rk3399_grf_regs * const grf = (void *)GRF_BASE;
-
+#ifdef ADV_GRF_IO_VSEL
 	grf->io_vsel = ADV_GRF_IO_VSEL;
 #endif
 
-#ifdef CONFIG_SWITCH_DEBUG_PORT_TO_UART
-	gpio_direction_input(DEBUG_SWITCH_GPIO);
-	if (gpio_get_value(DEBUG_SWITCH_GPIO) == DEBUG_SWITCH_GPIO_ACTIVE) {
+#ifdef DEBUG2UART_GPIO
+	struct rk3399_pmugrf_regs *pmugrf = (void *)PMUGRF_BASE;
+	struct rockchip_gpio_regs *gpio = (void *)GPIO1_PHYS;
+
+	//GPIO1A1
+	pmugrf->gpio1a_iomux = 0x3 << 18;//gpio
+	gpio->swport_ddr &= ~0x2;//input
+	if ((gpio->ext_port&0x2)>>1 == DEBUG2UART_GPIO_ACTIVE) {
 		gd->flags |= GD_FLG_DISABLE_CONSOLE;
 		//reconfig iomux to defalt gpio
-		grf_writel(0xf << 22, GRF_GPIO4C_IOMUX);
+		grf->gpio4c_iomux = 0xf << 22;
+	} else {
+		gd->flags &= ~GD_FLG_DISABLE_CONSOLE;
+		grf->gpio4c_iomux = (0xf << 22) | (0x5 << 6);
 	}
 #endif
 
@@ -162,6 +172,16 @@ int rk_board_late_init(void)
 	unsigned char version[10];
 	u32 valid;
 	int sn_len,time_len,info_len;
+
+#ifdef DEBUG2UART_GPIO
+	gpio_request(DEBUG2UART_GPIO,"DEBUG2UART_GPIO");
+	gpio_direction_input(DEBUG2UART_GPIO);
+	if (gpio_get_value(DEBUG2UART_GPIO) == DEBUG2UART_GPIO_ACTIVE)
+		env_set("switch_debug","yes");
+	else
+		env_set("switch_debug",NULL);
+	gpio_free(DEBUG2UART_GPIO);
+#endif
 
 	/* Get partition info */
 	dev_desc = rockchip_get_bootdev();

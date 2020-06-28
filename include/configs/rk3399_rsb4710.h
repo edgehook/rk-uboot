@@ -49,6 +49,11 @@
 #undef CONFIG_ROCKCHIP_VENDOR_PARTITION
 #endif
 
+/* switch debug port to normal uart */
+#define CONFIG_DISABLE_CONSOLE
+#define DEBUG2UART_GPIO	33
+#define DEBUG2UART_GPIO_ACTIVE 0
+
 #define CONFIG_BOARD_EARLY_INIT_F
 
 #endif
