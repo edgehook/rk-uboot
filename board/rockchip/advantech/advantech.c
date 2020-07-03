@@ -183,6 +183,13 @@ int rk_board_late_init(void)
 	gpio_free(DEBUG2UART_GPIO);
 #endif
 
+	memset(version,0,sizeof(version));
+	snprintf((char *)version,sizeof(version),"%s",strrchr(PLAIN_VERSION,'V'));
+	if(version[0]=='V')
+		env_set("swversion",(const char *)version);
+	else
+		env_set("swversion",NULL);
+
 	/* Get partition info */
 	dev_desc = rockchip_get_bootdev();
 	if (!dev_desc) {
@@ -248,13 +255,6 @@ int rk_board_late_init(void)
 		env_set("androidboot.factorytime", NULL);
 		env_set("androidboot.serialno", NULL);
 	}
-
-	memset(version,0,sizeof(version));
-	snprintf((char *)version,sizeof(version),"%s",strrchr(PLAIN_VERSION,'V'));
-	if(version[0]=='V')
-		env_set("swversion",(const char *)version);
-	else
-		env_set("swversion",NULL);
 
 out:
 	free(buf);
