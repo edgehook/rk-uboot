@@ -26,7 +26,7 @@
 
 	vcc_otg_vbus: otg-vbus-regulator {
 		compatible = "regulator-fixed";
-		gpio = <&gpio2 1 GPIO_ACTIVE_HIGH>;
+		gpio = <&gpio0 3 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&otg_vbus_drv>;
 		regulator-name = "vcc_otg_vbus";
@@ -344,7 +344,7 @@
 	usb {
 		otg_vbus_drv: otg-vbus-drv {
 			rockchip,pins = 
-				<2 1 RK_FUNC_GPIO &pcfg_pull_none>;
+				<0 3 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
 

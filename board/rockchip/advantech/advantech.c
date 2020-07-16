@@ -183,6 +183,12 @@ int rk_board_late_init(void)
 	gpio_free(DEBUG2UART_GPIO);
 #endif
 
+#ifdef ENABLE_WDT_GPIO
+	gpio_request(ENABLE_WDT_GPIO,"ENABLE_WDT_GPIO");
+	gpio_direction_output(ENABLE_WDT_GPIO,1);
+	gpio_free(ENABLE_WDT_GPIO);
+#endif
+
 	memset(version,0,sizeof(version));
 	snprintf((char *)version,sizeof(version),"%s",strrchr(PLAIN_VERSION,'V'));
 	if(version[0]=='V')
