@@ -654,9 +654,6 @@ int fdt_chosen(void *fdt)
 			adv_enable_status_by_alias_node(fdt, "serial2");
 			adv_disable_status_by_alias_node(fdt, "debug_console");
 			str = env_get("bootargs");
-		} else {
-			adv_enable_status_by_alias_node(fdt, "debug_console");
-			adv_disable_status_by_alias_node(fdt, "serial2");
 		}
 
 		if(env_get("androidboot.serialno")){
