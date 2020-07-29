@@ -1,0 +1,38 @@
+diff --git a/Makefile b/Makefile
+index ddea829d..2e94d6f3 100644
+--- a/Makefile
++++ b/Makefile
+@@ -246,6 +246,8 @@ ifeq ($(HOSTARCH),$(ARCH))
+ CROSS_COMPILE ?=
+ endif
+ 
++CROSS_COMPILE	?= $(srctree)/../prebuilts/gcc/linux-x86/aarch64/gcc-linaro-6.3.1-2017.05-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-
++
+ KCONFIG_CONFIG	?= .config
+ export KCONFIG_CONFIG
+ 
+diff --git a/tools/env/fw_env.config b/tools/env/fw_env.config
+index 7916ebdb..3f32d5c7 100644
+--- a/tools/env/fw_env.config
++++ b/tools/env/fw_env.config
+@@ -8,8 +8,8 @@
+ 
+ # NOR example
+ # MTD device name	Device offset	Env. size	Flash sector size	Number of sectors
+-/dev/mtd1		0x0000		0x4000		0x4000
+-/dev/mtd2		0x0000		0x4000		0x4000
++#/dev/mtd1		0x0000		0x4000		0x4000
++#/dev/mtd2		0x0000		0x4000		0x4000
+ 
+ # MTD SPI-dataflash example
+ # MTD device name	Device offset	Env. size	Flash sector size	Number of sectors
+@@ -23,8 +23,7 @@
+ # end of the device/partition, rather than a forwards offset from the start.
+ 
+ # Block device example
+-#/dev/mmcblk0		0xc0000		0x20000
+-#/dev/mmcblk0		-0x20000	0x20000
++/dev/mmcblk1		0x3f8000	0x1000
+ 
+ # VFAT example
+ #/boot/uboot.env	0x0000          0x4000
