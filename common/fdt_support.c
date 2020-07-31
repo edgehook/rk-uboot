@@ -454,9 +454,9 @@ static void adv_set_lcd_node(void *blob)
 			adv_enable_status_by_alias_node(blob, "edp_backlight");
 			adv_enable_status_by_alias_node(blob, "edp_vcc");
 			adv_enable_status_by_alias_node(blob, "edp_bkl_vdd");
-			if(!memcmp(p,"edp",3))
-				adv_enable_status_by_alias_node(blob, "edp_route");
-			else
+			//if(!memcmp(p,"edp",3))
+			//	adv_enable_status_by_alias_node(blob, "edp_route");
+			//else
 			{
 				node = fdtdec_get_alias_node(blob, "edp_bkl_vdd");
 				if(node)
@@ -499,9 +499,9 @@ static void adv_set_lcd_node(void *blob)
 				enable_vopb = 1;
 			}
 
-			if(!memcmp(p,"lvds",4))
-				adv_enable_status_by_alias_node(blob, "dsi_route");
-			else
+			//if(!memcmp(p,"lvds",4))
+			//	adv_enable_status_by_alias_node(blob, "dsi_route");
+			//else
 			{
 				node = fdtdec_get_alias_node(blob, "dsi_vcc");
 				if(node)
