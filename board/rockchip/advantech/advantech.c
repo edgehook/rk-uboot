@@ -35,15 +35,15 @@ DECLARE_GLOBAL_DATA_PTR;
 int board_early_init_f(void)
 {
 	struct rk3399_grf_regs * const grf = (void *)GRF_BASE;
+	struct rk3399_pmugrf_regs *pmugrf = (void *)PMUGRF_BASE;
+	struct rockchip_gpio_regs *gpio = NULL;
 #ifdef ADV_GRF_IO_VSEL
 	grf->io_vsel = ADV_GRF_IO_VSEL;
 #endif
 
 #ifdef DEBUG2UART_GPIO
-	struct rk3399_pmugrf_regs *pmugrf = (void *)PMUGRF_BASE;
-	struct rockchip_gpio_regs *gpio = (void *)GPIO1_PHYS;
-
 	//GPIO1A1
+	gpio = (void *)GPIO1_PHYS;
 	pmugrf->gpio1a_iomux = 0x3 << 18;//gpio
 	gpio->swport_ddr &= ~0x2;//input
 	if ((gpio->ext_port&0x2)>>1 == DEBUG2UART_GPIO_ACTIVE) {
@@ -56,6 +56,21 @@ int board_early_init_f(void)
 	}
 #endif
 
+#ifdef DISABLE_MSP430
+	gpio = (void *)GPIO0_PHYS;
+	pmugrf->gpio0a_iomux |= ((0x3 << 22) & ~(0x3 << 12)); //gpio_a6,wdt_en
+	pmugrf->gpio0a_iomux |= ((0x3 << 18) & ~(0x3 << 2));//gpio_a1,wdt_ping
+	gpio->swport_ddr |= (1 << 1 | 1 << 6);//set direction output
+
+	//wdt_en disable
+	gpio->swport_dr &= ~(1 << 6);
+
+	//wdt_en ping just one time
+	gpio->swport_dr &= ~(1 << 1);
+	mdelay(100);
+	gpio->swport_dr |= 1 << 1;
+#endif
+	
 #ifdef CONFIG_RESET_PMIC_GPIO
 	//if(SYS_LOADER_REBOOT_FLAG == IReadLoaderFlag())
 	{

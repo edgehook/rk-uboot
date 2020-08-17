@@ -59,4 +59,5 @@
 #define CONFIG_BOARD_EARLY_INIT_F
 #define ADV_GRF_IO_VSEL	0xB000B
 
+#define  DISABLE_MSP430
 #endif
