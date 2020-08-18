@@ -58,19 +58,14 @@ int board_early_init_f(void)
 
 #ifdef DISABLE_MSP430
 	gpio = (void *)GPIO0_PHYS;
-	pmugrf->gpio0a_iomux |= ((0x3 << 22) & ~(0x3 << 12)); //gpio_a6,wdt_en
-	pmugrf->gpio0a_iomux |= ((0x3 << 18) & ~(0x3 << 2));//gpio_a1,wdt_ping
+	pmugrf->gpio0a_iomux = 0x3 << 22; //gpio_a6,wdt_en
+	pmugrf->gpio0a_iomux = 0x3 << 18;//gpio_a1,wdt_ping
 	gpio->swport_ddr |= (1 << 1 | 1 << 6);//set direction output
 
-	//wdt_en disable
-	gpio->swport_dr &= ~(1 << 6);
-
-	//wdt_en ping just one time
-	gpio->swport_dr &= ~(1 << 1);
-	mdelay(100);
-	gpio->swport_dr |= 1 << 1;
+	//wdt_en & wdt_png disable
+	gpio->swport_dr &= ~((1 << 1) | (1 << 6));
 #endif
-	
+
 #ifdef CONFIG_RESET_PMIC_GPIO
 	//if(SYS_LOADER_REBOOT_FLAG == IReadLoaderFlag())
 	{
