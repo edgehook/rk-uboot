@@ -60,4 +60,5 @@
 #define ADV_GRF_IO_VSEL	0xB000B
 
 #define  DISABLE_MSP430
+#define  PULLDOWN_MIPI2LVDS_RESET
 #endif

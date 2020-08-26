@@ -66,6 +66,13 @@ int board_early_init_f(void)
 	gpio->swport_dr &= ~((1 << 1) | (1 << 6));
 #endif
 
+#ifdef PULLDOWN_MIPI2LVDS_RESET
+	gpio = (void *)GPIO1_PHYS;
+	pmugrf->gpio1d_iomux = 0x3 << 16; //gpio1_d0
+	gpio->swport_ddr |= (1 << 24);
+	gpio->swport_dr &= ~(1 << 24);
+#endif
+
 #ifdef CONFIG_RESET_PMIC_GPIO
 	//if(SYS_LOADER_REBOOT_FLAG == IReadLoaderFlag())
 	{
