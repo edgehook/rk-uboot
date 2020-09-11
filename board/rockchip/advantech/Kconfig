@@ -11,6 +11,9 @@ config PLAT_ROM5780A1_2G
 
 config PLAT_ROM5780A2_2G
 	bool "Support rom5780a2 2G"
+
+config PLAT_ROM5780A3_2G
+	bool "Support rom5780a3 2G"
 endchoice
 
 config SYS_BOARD
@@ -32,6 +35,12 @@ config SYS_CONFIG_NAME
 endif
 
 if PLAT_ROM5780A2_2G
+config SYS_CONFIG_NAME
+	default "rk3399_rom5780"
+
+endif
+
+if PLAT_ROM5780A3_2G
 config SYS_CONFIG_NAME
 	default "rk3399_rom5780"
 
