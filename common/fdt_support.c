@@ -560,6 +560,9 @@ int fdt_chosen(void *fdt)
 	char command_line[1024],*e,*p;
 	uint len;
 	const char *prop = NULL;
+	uint enable_phy_delay,tx_delay,rx_delay;
+	int phandle;
+	u32 pinctl_array[2];
 #endif
 	int dump;
 
@@ -713,13 +716,56 @@ int fdt_chosen(void *fdt)
 				strcat(command_line, " ");
 				strcat(command_line, e);
 			} else {
-				e = strrchr(prop,' ');
+				p = strstr(prop," V");
+				e = strrchr(p,' ');
+				strncat(command_line, p, e-p);
+			}
+
+			e = env_get("hwversion");
+			if(e){
+				strcat(command_line, " ");
 				strcat(command_line, e);
+			} else {
+				e = strrchr(prop,' ');
+				if(strstr(e," A")) {
+					strcat(command_line, e);
+				}
 			}
 
 			fdt_setprop(fdt, 0, "model", command_line,strlen(command_line)+1);
 		}else
 			printf("can't find model node\n");
+
+		// fix gmac's properties for different hw version
+		// just for chuanda board
+		e = env_get("hwversion");
+		if(!e){
+			nodeoffset = fdtdec_get_alias_node(fdt, "ethernet0");
+			if(nodeoffset) {
+				enable_phy_delay = fdtdec_get_uint(fdt, nodeoffset, "enable_phy_delay", 1);
+				if(!enable_phy_delay) {
+					tx_delay = fdtdec_get_uint(fdt, nodeoffset, "tx_delay1", 0);
+					if(tx_delay)
+						fdt_setprop_u32(fdt, nodeoffset, "tx_delay", tx_delay);
+					rx_delay = fdtdec_get_uint(fdt, nodeoffset, "rx_delay1", 0);
+					if(rx_delay)
+						fdt_setprop_u32(fdt, nodeoffset, "rx_delay", rx_delay);
+
+					if(tx_delay && rx_delay && 
+					  (2 == fdtdec_get_int_array_count(fdt, nodeoffset, "pinctrl-0", pinctl_array, 2))) {
+						fdt32_t cells[2];
+						i = fdt_path_offset(fdt, "/pinctrl/gmac/rgmii-pins");
+						phandle = fdt_get_phandle(fdt, i);
+						if(phandle > 0) {
+							pinctl_array[0] = phandle;
+							cells[0] = cpu_to_fdt32(pinctl_array[0]);
+							cells[1] = cpu_to_fdt32(pinctl_array[1]);
+							fdt_setprop(fdt, nodeoffset, "pinctrl-0", cells, sizeof(cells[0]) * 2);
+						}
+					}
+				}
+			}
+		}
 
 		// set screen begin
 		adv_parse_drm_env(fdt);
@@ -737,12 +783,12 @@ int fdt_chosen(void *fdt)
 			strcat(command_line, e);
 			env_set("bootargs", command_line);
 			adv_set_lcd_node(fdt);
-
-			/* find or create "/chosen" node. */
-			nodeoffset = fdt_find_or_add_subnode(fdt, 0, "chosen");
-			if (nodeoffset < 0)
-				return nodeoffset;
 		}
+
+		/* find or create "/chosen" node. */
+		nodeoffset = fdt_find_or_add_subnode(fdt, 0, "chosen");
+		if (nodeoffset < 0)
+			return nodeoffset;
 #endif
 #endif
 

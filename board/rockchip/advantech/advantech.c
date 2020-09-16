@@ -261,22 +261,24 @@ int rk_board_late_init(void)
 	if(sn_len && (sn_len <= 20)) {
 		buf[13+sn_len] = '\0';
 		env_set("boardsn", (const char *)(buf+13));
+		env_set("androidboot.serialno", (const char *)(buf+13));
 		if(time_len && (time_len == 8)) {
 			buf[14+sn_len+time_len] = '\0';
 			env_set("androidboot.factorytime", (const char *)(buf+14+sn_len));
 			if(info_len && (info_len <= 0x40)) {
 				buf[15+sn_len+time_len+info_len] = '\0';
-				env_set("androidboot.serialno", (const char *)(buf+15+sn_len+time_len));
+				env_set("hwversion", (const char *)(buf+15+sn_len+time_len));
 			}else
-				env_set("androidboot.serialno", NULL);
+				env_set("hwversion", NULL);
 		}else {
 			env_set("androidboot.factorytime", NULL);
-			env_set("androidboot.serialno", NULL);
+			env_set("hwversion", NULL);
 		}
 	} else {
 		env_set("boardsn", NULL);
 		env_set("androidboot.factorytime", NULL);
 		env_set("androidboot.serialno", NULL);
+		env_set("hwversion", NULL);
 	}
 
 out:
