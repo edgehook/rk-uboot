@@ -57,13 +57,23 @@ int board_early_init_f(void)
 #endif
 
 #ifdef DISABLE_MSP430
+#ifdef CONFIG_PLAT_ROM5780A3_2G
 	gpio = (void *)GPIO0_PHYS;
-	pmugrf->gpio0a_iomux = 0x3 << 22; //gpio_a6,wdt_en
+	pmugrf->gpio0a_iomux = 0x3 << 28; //gpio_a6,wdt_en
+	pmugrf->gpio0b_iomux = 0x3 << 18;//gpio_a1,wdt_ping
+	gpio->swport_ddr |= (1 << 9 | 1 << 6);//set direction output
+
+	//wdt_en & wdt_png disable
+	gpio->swport_dr &= ~((1 << 9) | (1 << 6));
+#else
+	gpio = (void *)GPIO0_PHYS;
+	pmugrf->gpio0a_iomux = 0x3 << 28; //gpio_a6,wdt_en
 	pmugrf->gpio0a_iomux = 0x3 << 18;//gpio_a1,wdt_ping
 	gpio->swport_ddr |= (1 << 1 | 1 << 6);//set direction output
 
 	//wdt_en & wdt_png disable
 	gpio->swport_dr &= ~((1 << 1) | (1 << 6));
+#endif
 #endif
 
 #ifdef PULLDOWN_MIPI2LVDS_RESET
