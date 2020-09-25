@@ -60,7 +60,7 @@ int board_early_init_f(void)
 #ifdef CONFIG_PLAT_ROM5780A3_2G
 	gpio = (void *)GPIO0_PHYS;
 	pmugrf->gpio0a_iomux = 0x3 << 28; //gpio_a6,wdt_en
-	pmugrf->gpio0b_iomux = 0x3 << 18;//gpio_a1,wdt_ping
+	pmugrf->gpio0b_iomux = 0x3 << 18;//gpio_b1,wdt_ping
 	gpio->swport_ddr |= (1 << 9 | 1 << 6);//set direction output
 
 	//wdt_en & wdt_png disable
