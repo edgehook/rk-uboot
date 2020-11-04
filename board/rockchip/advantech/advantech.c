@@ -41,6 +41,12 @@ int board_early_init_f(void)
 	grf->io_vsel = ADV_GRF_IO_VSEL;
 #endif
 
+#ifdef ENABLE_PCIERST_GPIO
+	gpio = (void *)GPIO2_PHYS;
+	gpio->swport_ddr |= (1 << 28);//set direction output
+	gpio->swport_dr &= ~(1 << 28);//output low
+#endif
+
 #ifdef DEBUG2UART_GPIO
 	//GPIO1A1
 	gpio = (void *)GPIO1_PHYS;
