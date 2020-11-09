@@ -46,6 +46,10 @@ config SYS_CONFIG_NAME
 
 endif
 
+config CUSTOM_GY_SPECIFIC_OPTIONS
+	bool "specific options from customer gy"
+	default n
+
 config BOARD_SPECIFIC_OPTIONS # dummy
 	def_bool y
 

@@ -202,6 +202,8 @@ CONFIG_SPL_STACK_R_ADDR=0x04000000
 # CONFIG_PLAT_RSB4710A2_2G is not set
 # CONFIG_PLAT_ROM5780A1_2G is not set
 CONFIG_PLAT_ROM5780A2_2G=y
+# CONFIG_PLAT_ROM5780A3_2G is not set
+CONFIG_CUSTOM_GY_SPECIFIC_OPTIONS=y
 # CONFIG_SPL_LIBDISK_SUPPORT is not set
 # CONFIG_SPL_NAND_SUPPORT is not set
 # CONFIG_SPL_SPI_FLASH_SUPPORT is not set
@@ -688,7 +690,7 @@ CONFIG_OF_LIVE=y
 # CONFIG_OF_SEPARATE is not set
 CONFIG_OF_EMBED=y
 # CONFIG_OF_BOARD is not set
-CONFIG_OF_LIST="rk3399-rom5780-a2"
+CONFIG_OF_LIST="rk3399-rom5780-a2-gy"
 # CONFIG_MULTI_DTB_FIT is not set
 # CONFIG_SPL_MULTI_DTB_FIT is not set
 CONFIG_OF_SPL_REMOVE_PROPS="pinctrl-0 pinctrl-names clock-names interrupt-parent assigned-clocks assigned-clock-rates assigned-clock-parents"

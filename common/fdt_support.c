@@ -381,6 +381,11 @@ static void adv_set_lcd_node(void *blob)
 	char *e,*p;
 	int node;
 	int enable_vopb = 0;
+#ifdef CONFIG_CUSTOM_GY_SPECIFIC_OPTIONS
+	char *pwm;
+	unsigned long clock;
+	u32 array[4];
+#endif
 
 	node = fdt_path_offset(blob, "/fdt_dummy");
 	if(node)
@@ -541,6 +546,39 @@ static void adv_set_lcd_node(void *blob)
 			adv_disable_status_by_alias_node(blob, "dsi_in_vopl");
 			adv_disable_status_by_alias_node(blob, "dsi_route");
 		}
+#ifdef CONFIG_CUSTOM_GY_SPECIFIC_OPTIONS
+		//enable LVDS backlight
+		adv_enable_status_by_alias_node(blob, "dsi_backlight");
+		adv_enable_status_by_alias_node(blob, "lvds_bkl_vcc");
+		//enable eDP backlight
+		adv_enable_status_by_alias_node(blob, "edp_backlight");
+		adv_enable_status_by_alias_node(blob, "edp_bkl_vdd");
+
+		pwm = env_get("pwm_clock");
+		if(pwm) {
+			clock = simple_strtoul(pwm, NULL, 10);
+			if((clock >= 200) && (clock <= 20000)) {
+				fdt32_t cells[4];
+				node =  fdtdec_get_alias_node(blob, "dsi_backlight");
+				if(4 == fdtdec_get_int_array_count(blob, node, "pwms", array, 4)) {
+					cells[0] = cpu_to_fdt32(array[0]);
+					cells[1] = cpu_to_fdt32(array[1]);
+					cells[2] = cpu_to_fdt32(1000000000/clock);
+					cells[3] = cpu_to_fdt32(array[3]);
+					fdt_setprop(blob, node, "pwms", cells, sizeof(cells[0]) * 4);
+				}
+
+				node =  fdtdec_get_alias_node(blob, "edp_backlight");
+				if(4 == fdtdec_get_int_array_count(blob, node, "pwms", array, 4)) {
+					cells[0] = cpu_to_fdt32(array[0]);
+					cells[1] = cpu_to_fdt32(array[1]);
+					cells[2] = cpu_to_fdt32(1000000000/clock);
+					cells[3] = cpu_to_fdt32(array[3]);
+					fdt_setprop(blob, node, "pwms", cells, sizeof(cells[0]) * 4);
+				}
+			}
+		}
+#endif
 	}
 }
 #endif
