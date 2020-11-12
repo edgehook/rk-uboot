@@ -333,6 +333,11 @@
 	};
 };
 
+&i2c2 {
+	status = "okay";
+	clock-frequency = <400000>;
+};
+
 &pinctrl {
 	pmic {
 		pmic_int_l: pmic-int-l {

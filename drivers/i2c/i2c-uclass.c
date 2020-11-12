@@ -494,7 +494,11 @@ static int i2c_post_probe(struct udevice *dev)
 	i2c->speed_hz = dev_read_u32_default(dev, "clock-frequency", 100000);
 
 	if (dev_read_alias_seq(dev, &seq) >= 0)
+	{
+#ifndef  DELAY_MSP430_TIMEOUT
 		printf("I2c%d speed: %dHz\n", seq, i2c->speed_hz);
+#endif
+	}
 	else
 		printf("I2c speed: %dHz\n", i2c->speed_hz);
 
