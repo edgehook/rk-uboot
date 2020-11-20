@@ -222,6 +222,24 @@ int rk_board_late_init(void)
 	gpio_free(ENABLE_WDT_GPIO);
 #endif
 
+#ifdef DISABLE_EDP_VDD_GPIO
+	gpio_request(DISABLE_EDP_VDD_GPIO,"DISABLE_EDP_VDD_GPIO");
+	gpio_direction_output(DISABLE_EDP_VDD_GPIO,0);
+	gpio_free(DISABLE_EDP_VDD_GPIO);
+#endif
+
+#ifdef DISABLE_EDP_BKLT_GPIO
+	gpio_request(DISABLE_EDP_BKLT_GPIO,"DISABLE_EDP_BKLT_GPIO");
+	gpio_direction_output(DISABLE_EDP_BKLT_GPIO,0);
+	gpio_free(DISABLE_EDP_BKLT_GPIO);
+#endif
+
+#ifdef DISABLE_EDP_PWM_GPIO
+	gpio_request(DISABLE_EDP_PWM_GPIO,"DISABLE_EDP_PWM_GPIO");
+	gpio_direction_output(DISABLE_EDP_PWM_GPIO,0);
+	gpio_free(DISABLE_EDP_PWM_GPIO);
+#endif
+
 	memset(version,0,sizeof(version));
 	snprintf((char *)version,sizeof(version),"%s",strrchr(PLAIN_VERSION,'V'));
 	if(version[0]=='V')
