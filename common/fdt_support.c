@@ -381,11 +381,9 @@ static void adv_set_lcd_node(void *blob)
 	char *e,*p;
 	int node;
 	int enable_vopb = 0;
-#ifdef CONFIG_CUSTOM_GY_SPECIFIC_OPTIONS
 	char *pwm;
 	unsigned long clock;
 	u32 array[4];
-#endif
 
 	node = fdt_path_offset(blob, "/fdt_dummy");
 	if(node)
