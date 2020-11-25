@@ -8,6 +8,7 @@
 #include <dm.h>
 #include <misc.h>
 #include <ram.h>
+#include <mmc.h>
 #include <dm/pinctrl.h>
 #include <dm/uclass-internal.h>
 #include <asm/setup.h>
@@ -205,6 +206,7 @@ int rk_board_late_init(void)
 	unsigned char version[10];
 	u32 valid;
 	int sn_len,time_len,info_len;
+	unsigned char ori_hwpart;
 
 #ifdef DEBUG2UART_GPIO
 	gpio_request(DEBUG2UART_GPIO,"DEBUG2UART_GPIO");
@@ -254,33 +256,57 @@ int rk_board_late_init(void)
 		return -ENODEV;
 	}
 
-	part_name = BOARD_INFO_NAME;
-	ret = part_get_info_by_name(dev_desc, part_name, &part_info);
-	if (ret < 0) {
-		printf("%s: failed to get %s part info, ret=%d\n",
-		       __func__, part_name, ret);
+	ori_hwpart = dev_desc->hwpart;
+	ret = blk_select_hwpart_devnum(IF_TYPE_MMC, dev_desc->devnum, MMC_NUM_BOOT_PARTITION);
+	if (ret){
+		printf("failed to select boot_part\n");
 		return ret;
 	}
 
 	blk_cnt = DIV_ROUND_UP(512, dev_desc->blksz);
-	buf = memalign(ARCH_DMA_MINALIGN, part_info.blksz*blk_cnt);
+	buf = memalign(ARCH_DMA_MINALIGN, dev_desc->blksz*blk_cnt);
 	if (!buf) {
 		printf("%s: out of memory!\n", __func__);
 		return -ENOMEM;
 	}
 
-	ret = blk_dread(dev_desc, part_info.start, blk_cnt, buf);
+	ret = blk_dread(dev_desc, 0, blk_cnt, buf);
 	if (ret != blk_cnt) {
-		printf("%s: failed to read %s hdr!\n", __func__, part_name);
+		printf("%s: failed to read boot_part hdr!\n", __func__);
 		goto out;
+	}
+
+	ret = blk_select_hwpart_devnum(IF_TYPE_MMC, dev_desc->devnum, ori_hwpart);
+	if (ret){
+		printf("failed to select user data part\n");
+		return ret;
 	}
 
 	valid = is_valid_ethaddr(buf);
 	if (valid)
 		eth_env_set_enetaddr("ethaddr", buf);
 	else {
-		puts("Skipped eth0addr assignment due to invalid,using default!\n");
-		goto out;
+		part_name = BOARD_INFO_NAME;
+		ret = part_get_info_by_name(dev_desc, part_name, &part_info);
+		if (ret < 0) {
+			printf("%s: failed to get %s part info, ret=%d\n",
+				__func__, part_name, ret);
+			return ret;
+		}
+
+		ret = blk_dread(dev_desc, part_info.start, blk_cnt, buf);
+		if (ret != blk_cnt) {
+			printf("%s: failed to read boot_part hdr!\n", __func__);
+			goto out;
+		}
+
+		valid = is_valid_ethaddr(buf);
+		if (valid)
+			eth_env_set_enetaddr("ethaddr", buf);
+		else {
+			puts("Skipped eth0addr assignment due to invalid,using default!\n");
+			goto out;
+		}
 	}
 
 	valid = is_valid_ethaddr(&buf[6]);
