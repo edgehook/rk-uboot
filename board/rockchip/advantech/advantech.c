@@ -256,13 +256,6 @@ int rk_board_late_init(void)
 		return -ENODEV;
 	}
 
-	ori_hwpart = dev_desc->hwpart;
-	ret = blk_select_hwpart_devnum(IF_TYPE_MMC, dev_desc->devnum, MMC_NUM_BOOT_PARTITION);
-	if (ret){
-		printf("failed to select boot_part\n");
-		return ret;
-	}
-
 	blk_cnt = DIV_ROUND_UP(512, dev_desc->blksz);
 	buf = memalign(ARCH_DMA_MINALIGN, dev_desc->blksz*blk_cnt);
 	if (!buf) {
@@ -270,9 +263,17 @@ int rk_board_late_init(void)
 		return -ENOMEM;
 	}
 
+	ori_hwpart = dev_desc->hwpart;
+	ret = blk_select_hwpart_devnum(IF_TYPE_MMC, dev_desc->devnum, MMC_NUM_BOOT_PARTITION);
+	if (ret){
+		printf("failed to select boot_part\n");
+		return ret;
+	}
+
 	ret = blk_dread(dev_desc, 0, blk_cnt, buf);
 	if (ret != blk_cnt) {
 		printf("%s: failed to read boot_part hdr!\n", __func__);
+		blk_select_hwpart_devnum(IF_TYPE_MMC, dev_desc->devnum, ori_hwpart);
 		goto out;
 	}
 
