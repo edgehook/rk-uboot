@@ -267,7 +267,7 @@ int rk_board_late_init(void)
 	ret = blk_select_hwpart_devnum(IF_TYPE_MMC, dev_desc->devnum, MMC_NUM_BOOT_PARTITION);
 	if (ret){
 		printf("failed to select boot_part\n");
-		return ret;
+		goto out;
 	}
 
 	ret = blk_dread(dev_desc, 0, blk_cnt, buf);
@@ -280,7 +280,7 @@ int rk_board_late_init(void)
 	ret = blk_select_hwpart_devnum(IF_TYPE_MMC, dev_desc->devnum, ori_hwpart);
 	if (ret){
 		printf("failed to select user data part\n");
-		return ret;
+		goto out;
 	}
 
 	valid = is_valid_ethaddr(buf);
@@ -292,7 +292,7 @@ int rk_board_late_init(void)
 		if (ret < 0) {
 			printf("%s: failed to get %s part info, ret=%d\n",
 				__func__, part_name, ret);
-			return ret;
+			goto out;
 		}
 
 		ret = blk_dread(dev_desc, part_info.start, blk_cnt, buf);
