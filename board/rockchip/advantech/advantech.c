@@ -260,7 +260,7 @@ int rk_board_late_init(void)
 	buf = memalign(ARCH_DMA_MINALIGN, dev_desc->blksz*blk_cnt);
 	if (!buf) {
 		printf("%s: out of memory!\n", __func__);
-		return -ENOMEM;
+		return 0;
 	}
 
 	ori_hwpart = dev_desc->hwpart;
