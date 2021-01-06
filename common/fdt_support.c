@@ -541,14 +541,23 @@ static void adv_set_lcd_node(void *blob)
 		else
 		{
 			adv_disable_status_by_alias_node(blob, "dsi");
-			adv_disable_status_by_alias_node(blob, "dsi_backlight");
-			adv_disable_status_by_alias_node(blob, "dsi_vcc");
-			adv_disable_status_by_alias_node(blob, "dsi_vcc_io");
-			adv_disable_status_by_alias_node(blob, "lvds_pwr_vcc");
-			adv_disable_status_by_alias_node(blob, "lvds_bkl_vcc");
 			adv_disable_status_by_alias_node(blob, "dsi_in_vopb");
 			adv_disable_status_by_alias_node(blob, "dsi_in_vopl");
 			adv_disable_status_by_alias_node(blob, "dsi_route");
+		#ifdef CONFIG_ADV_EDP_LVDS_USE_THE_SAME_RESOURCE
+			if(!memcmp(p,"edp",3) || !memcmp(e,"edp",3)) {
+				//don't disable vcc & blk
+			}
+			else
+		#endif
+			{
+				adv_disable_status_by_alias_node(blob, "dsi_backlight");
+				adv_disable_status_by_alias_node(blob, "dsi_vcc");
+				adv_disable_status_by_alias_node(blob, "dsi_vcc_io");
+				adv_disable_status_by_alias_node(blob, "lvds_pwr_vcc");
+				adv_disable_status_by_alias_node(blob, "lvds_bkl_vcc");
+			}
+
 		}
 #ifdef CONFIG_CUSTOM_GY_SPECIFIC_OPTIONS
 		if(!memcmp(p,"hdmi",4) && !memcmp(e,"null",4))
