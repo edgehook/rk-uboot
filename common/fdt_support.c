@@ -560,17 +560,17 @@ static void adv_set_lcd_node(void *blob)
 
 		}
 #ifdef CONFIG_CUSTOM_GY_SPECIFIC_OPTIONS
-		if(!memcmp(p,"hdmi",4) && !memcmp(e,"null",4))
+		//if(!memcmp(p,"hdmi",4) && !memcmp(e,"null",4))
 		{
 			//enable LVDS backlight
 			adv_enable_status_by_alias_node(blob, "dsi_backlight");
 			adv_enable_status_by_alias_node(blob, "lvds_bkl_vcc");
-			node =  fdtdec_get_alias_node(blob, "dsi_backlight");
+			node = fdtdec_get_alias_node(blob, "dsi_backlight");
 			fdt_setprop_u32(blob, node, "default-enable", 1);
 			//enable eDP backlight
 			adv_enable_status_by_alias_node(blob, "edp_backlight");
 			adv_enable_status_by_alias_node(blob, "edp_bkl_vdd");
-			node =  fdtdec_get_alias_node(blob, "edp_backlight");
+			node = fdtdec_get_alias_node(blob, "edp_backlight");
 			fdt_setprop_u32(blob, node, "default-enable", 1);
 		}
 #endif
