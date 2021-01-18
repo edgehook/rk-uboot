@@ -1,0 +1,30 @@
+diff --git a/tools/env/fw_env.c b/tools/env/fw_env.c
+old mode 100644
+new mode 100755
+index ab06415..7f09f23
+--- a/tools/env/fw_env.c
++++ b/tools/env/fw_env.c
+@@ -1512,6 +1512,9 @@ static int get_config (char *fname)
+ 	int rc;
+ 	char dump[128];
+ 	char *devname;
++#ifdef CONFIG_TARGET_ADVANTECH_RK3399
++	int fd;
++#endif
+ 
+ 	fp = fopen (fname, "r");
+ 	if (fp == NULL)
+@@ -1533,6 +1536,13 @@ static int get_config (char *fname)
+ 			continue;
+ 
+ 		DEVNAME(i) = devname;
++#ifdef CONFIG_TARGET_ADVANTECH_RK3399
++		fd = open(DEVNAME(i), O_RDONLY);
++		if(fd < 0)
++			DEVNAME(i) = "/dev/mmcblk0";
++		else
++			close(fd);
++#endif
+ 
+ 		/* Set defaults for DEVESIZE, ENVSECTORS later once we
+ 		 * know DEVTYPE
