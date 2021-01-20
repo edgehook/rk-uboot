@@ -1,0 +1,64 @@
+diff --git a/board/rockchip/advantech/advantech.c b/board/rockchip/advantech/advantech.c
+index 0f66d14..6e5e3b1 100755
+--- a/board/rockchip/advantech/advantech.c
++++ b/board/rockchip/advantech/advantech.c
+@@ -64,6 +64,15 @@ int board_early_init_f(void)
+ #endif
+ 
+ #ifdef DISABLE_MSP430
++#ifdef CONFIG_CUSTOM_GY_SPECIFIC_OPTIONS
++	gpio = (void *)GPIO0_PHYS;
++	pmugrf->gpio0a_iomux = (0x3 << 28) | (0x3 << 18); //gpio_a6,wdt_en;gpio_a1,wdt_ping2
++	pmugrf->gpio0b_iomux = 0x3 << 18;//gpio_b1,wdt_ping
++	gpio->swport_ddr |= (1 << 9 | 1 << 6 | 1 << 1);//set direction output
++
++	//wdt_en & wdt_png & wdt_png2 disable
++	gpio->swport_dr &= ~((1 << 9) | (1 << 6) | (1 << 1));
++#else
+ #ifdef CONFIG_PLAT_ROM5780A3_2G
+ 	gpio = (void *)GPIO0_PHYS;
+ 	pmugrf->gpio0a_iomux = 0x3 << 28; //gpio_a6,wdt_en
+@@ -82,6 +91,7 @@ int board_early_init_f(void)
+ 	gpio->swport_dr &= ~((1 << 1) | (1 << 6));
+ #endif
+ #endif
++#endif
+ 
+ #ifdef PULLDOWN_MIPI2LVDS_RESET
+ 	gpio = (void *)GPIO1_PHYS;
+@@ -224,6 +234,14 @@ int rk_board_late_init(void)
+ 	gpio_free(ENABLE_WDT_GPIO);
+ #endif
+ 
++#ifdef CONFIG_CUSTOM_GY_SPECIFIC_OPTIONS
++#ifdef ENABLE_WDT_GPIO2
++	gpio_request(ENABLE_WDT_GPIO2,"ENABLE_WDT_GPIO2");
++	gpio_direction_output(ENABLE_WDT_GPIO2,1);
++	gpio_free(ENABLE_WDT_GPIO2);
++#endif
++#endif
++
+ #ifdef DISABLE_EDP_VDD_GPIO
+ 	gpio_request(DISABLE_EDP_VDD_GPIO,"DISABLE_EDP_VDD_GPIO");
+ 	gpio_direction_output(DISABLE_EDP_VDD_GPIO,0);
+diff --git a/include/configs/rk3399_rom5780.h b/include/configs/rk3399_rom5780.h
+index 4a7a9ce..5aac767 100755
+--- a/include/configs/rk3399_rom5780.h
++++ b/include/configs/rk3399_rom5780.h
+@@ -54,11 +54,16 @@
+ #define DEBUG2UART_GPIO	33
+ #define DEBUG2UART_GPIO_ACTIVE 0
+ 
++#ifdef CONFIG_CUSTOM_GY_SPECIFIC_OPTIONS
++#define ENABLE_WDT_GPIO 1
++#define ENABLE_WDT_GPIO2 9
++#else
+ #ifdef CONFIG_PLAT_ROM5780A3_2G
+ #define ENABLE_WDT_GPIO 9
+ #else
+ #define ENABLE_WDT_GPIO 1
+ #endif
++#endif
+ 
+ #define CONFIG_BOARD_EARLY_INIT_F
+ #define ADV_GRF_IO_VSEL	0xB000B
