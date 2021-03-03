@@ -358,20 +358,16 @@ static void adv_parse_drm_env(void *fdt)
 	} else {
 		phandle = fdt_getprop_u32_default_node(fdt, node, 0, "extend-screen", -1);
 		if(-1 != phandle)
+		{
 			node2 = fdt_node_offset_by_phandle_node(fdt, node, phandle);
-		else
-			node2 = 0;
+			env_set("extend_screen",fdt_get_name(fdt, node2, NULL));
+		}
+
 		phandle = fdt_getprop_u32_default_node(fdt, node, 0, "prmry-screen", -1);
 		if(-1 != phandle)
+		{
 			node1 = fdt_node_offset_by_phandle_node(fdt, node, phandle);
-		else
-			node1 = 0;
-		if((node2 > 0) && (node1 > 0)) {
-			env_set("extend_screen",fdt_get_name(fdt, node2, NULL));
 			env_set("prmry_screen",fdt_get_name(fdt, node1, NULL));
-		} else {
-			env_set("prmry_screen","hdmi-default");
-			env_set("extend_screen","dp-default");
 		}
 	}
 }
@@ -907,14 +903,21 @@ int fdt_chosen(void *fdt)
 
 		p = env_get("prmry_screen");
 		e = env_get("extend_screen");
-		if(p && e) {
+		if(p)
+		{
 			strcat(command_line, " prmry_screen=");
 			strcat(command_line, p);
+			env_set("bootargs", command_line);
+		}
+		if(e)
+		{
+
 			strcat(command_line, " extend_screen=");
 			strcat(command_line, e);
 			env_set("bootargs", command_line);
-			adv_set_lcd_node(fdt);
 		}
+		if(p || e)
+			adv_set_lcd_node(fdt);
 
 
 		adv_parse_uio_env(fdt);
