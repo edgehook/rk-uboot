@@ -99,7 +99,10 @@ int board_early_init_f(void)
 		mdelay(500);
 	}
 #endif
-
+#ifdef AMP_MUTE_GPIO
+	gpio_request(AMP_MUTE_GPIO,"AMP_MUTE_GPIO");
+	gpio_direction_output(AMP_MUTE_GPIO,0);
+#endif
 	return 0;
 }
 
