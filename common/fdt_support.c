@@ -343,7 +343,7 @@ static void adv_parse_drm_env(void *fdt)
 
 	node = fdt_path_offset(fdt, "/display-timings");
 	use_dts_screen = fdtdec_get_int(fdt, node, "use-dts-screen", 0);
-	if(!use_dts_screen || env_get("use_env_screen")){
+	if(env_get("use_env_screen") != NULL || !use_dts_screen){
 		p = env_get("prmry_screen");
 		e = env_get("extend_screen");
 		if(!p || !e) {
@@ -352,22 +352,31 @@ static void adv_parse_drm_env(void *fdt)
 				node = fdt_node_offset_by_phandle_node(fdt, node, phandle);
 				env_set("extend_screen",fdt_get_name(fdt, node, NULL));
 			} else 
-				env_set("extend_screen","dp-default");
+				env_set("extend_screen","edp-default");
+
 			env_set("prmry_screen","hdmi-default");
+		} else {
+			if(!memcmp(p, "lvds", 4)){
+				env_set("prmry_screen", "lvds-g150xgel05");
+			}else if(!memcmp(e, "lvds", 4)) {
+				env_set("extend_screen", "lvds-g150xgel05");
+			}
 		}
 	} else {
 		phandle = fdt_getprop_u32_default_node(fdt, node, 0, "extend-screen", -1);
-		if(-1 != phandle)
-		{
+		if(-1 != phandle) {
 			node2 = fdt_node_offset_by_phandle_node(fdt, node, phandle);
 			env_set("extend_screen",fdt_get_name(fdt, node2, NULL));
+		}else {
+			env_set("extend_screen","edp-default");
 		}
 
 		phandle = fdt_getprop_u32_default_node(fdt, node, 0, "prmry-screen", -1);
-		if(-1 != phandle)
-		{
+		if(-1 != phandle) {
 			node1 = fdt_node_offset_by_phandle_node(fdt, node, phandle);
 			env_set("prmry_screen",fdt_get_name(fdt, node1, NULL));
+		}else {
+			env_set("prmry_screen","hdmi-default");
 		}
 	}
 }
@@ -421,9 +430,7 @@ static void adv_set_lcd_node(void *blob)
 				adv_enable_status_by_alias_node(blob, "dp_in_vopb");
 				enable_vopb = 1;
 			}
-		}
-		else
-		{
+		} else {
 			adv_disable_status_by_alias_node(blob, "dp");
 			adv_disable_status_by_alias_node(blob, "vpd");
 			adv_disable_status_by_alias_node(blob, "dp_in_vopb");
@@ -470,9 +477,7 @@ static void adv_set_lcd_node(void *blob)
 					fdt_delprop(blob, node, "regulator-boot-on");
 				}
 			}
-		}
-		else
-		{
+		} else {
 			adv_disable_status_by_alias_node(blob, "edp");
 			adv_disable_status_by_alias_node(blob, "edp_panel");
 			adv_disable_status_by_alias_node(blob, "edp_in_vopb");
@@ -533,9 +538,7 @@ static void adv_set_lcd_node(void *blob)
 					fdt_delprop(blob, node, "regulator-boot-on");
 				}
 			}
-		}
-		else
-		{
+		} else {
 			adv_disable_status_by_alias_node(blob, "dsi");
 			adv_disable_status_by_alias_node(blob, "dsi_in_vopb");
 			adv_disable_status_by_alias_node(blob, "dsi_in_vopl");
