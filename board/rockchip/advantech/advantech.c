@@ -246,6 +246,18 @@ int rk_board_late_init(void)
 	gpio_direction_output(AMP_MUTE_GPIO,0);
 #endif
 
+#ifdef M2B1_SEL_GPIO
+	gpio_request(M2B1_SEL_GPIO,"M2B1_SEL_GPIO");
+	gpio_direction_output(M2B1_SEL_GPIO, 0);
+#endif
+#ifdef M2B1_DISABLE_GPIO
+	gpio_request(M2B1_GNSS_DISABLE_GPIO, "M2B1_GNSS_DISABLE_GPIO");
+	gpio_direction_output(M2B1_GNSS_DISABLE_GPIO, 0);
+
+	gpio_request(M2B1_DISABLE_GPIO,"M2B1_DISABLE_GPIO");
+	gpio_direction_output(M2B1_DISABLE_GPIO, 0);
+#endif
+
 	memset(version,0,sizeof(version));
 	snprintf((char *)version,sizeof(version),"%s",strrchr(PLAIN_VERSION,'V'));
 	if(version[0]=='V')
