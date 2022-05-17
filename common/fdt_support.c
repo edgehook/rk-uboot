@@ -355,12 +355,6 @@ static void adv_parse_drm_env(void *fdt)
 				env_set("extend_screen","edp-default");
 
 			env_set("prmry_screen","hdmi-default");
-		} else {
-			if(!memcmp(p, "lvds", 4)){
-				env_set("prmry_screen", "lvds-g150xgel05");
-			}else if(!memcmp(e, "lvds", 4)) {
-				env_set("extend_screen", "lvds-g150xgel05");
-			}
 		}
 	} else {
 		phandle = fdt_getprop_u32_default_node(fdt, node, 0, "extend-screen", -1);
