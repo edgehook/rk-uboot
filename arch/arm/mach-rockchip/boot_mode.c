@@ -69,6 +69,56 @@ int get_bcb_recovery_msg(void)
 	return bcb_recovery_msg;
 }
 
+#ifdef CONFIG_ADV_SYSTEM_BACKUP
+static int adv_set_backup_mode(void)
+{
+	struct bootloader_message *bmsg = NULL;
+	struct blk_desc *dev_desc;
+	disk_partition_t part_info;
+	int ret, cnt;
+
+	char recovery_str[] = "recovery\n";
+	char arg[] = "--update_package=/backup/update.img\n";
+
+#ifdef CONFIG_ANDROID_BOOT_IMAGE
+	u32 bcb_offset = android_bcb_msg_sector_offset();
+#else
+	u32 bcb_offset = BOOTLOADER_MESSAGE_BLK_OFFSET;
+#endif
+
+	dev_desc = rockchip_get_bootdev();
+	if (!dev_desc) {
+		printf("%s: dev_desc is NULL!\n", __func__);
+		return -ENODEV;
+	}
+
+	ret = part_get_info_by_name(dev_desc, PART_MISC, &part_info);
+	if (ret < 0) {
+		printf("%s: Could not found misc partition\n", __func__);
+	}
+
+	cnt = DIV_ROUND_UP(sizeof(struct bootloader_message), dev_desc->blksz);
+	bmsg = memalign(ARCH_DMA_MINALIGN, cnt * dev_desc->blksz);
+
+	strcpy(bmsg->command, "boot-recovery");
+	strcpy(bmsg->recovery, recovery_str);
+	memcpy(bmsg->recovery + strlen(recovery_str), arg, ((strlen(arg) > sizeof(bmsg->recovery))? sizeof(bmsg->recovery) : strlen(arg)));
+	bmsg->recovery[strlen(bmsg->recovery) + 1] = '\n';
+
+	ret = blk_dwrite(dev_desc,
+			part_info.start + bcb_offset,
+			cnt, bmsg);
+	if (ret != cnt) {
+		free(bmsg);
+		printf("+++Could not write to misc partition\n");
+		return -EIO;
+	}
+
+	printf("Write to misc partition success\n");
+	return 0;
+}
+#endif
+
 /*
  * There are three ways to get reboot-mode:
  *
@@ -153,6 +203,10 @@ int rockchip_get_boot_mode(void)
 	 * Anyway, we should set download boot mode as the highest priority, so:
 	 * reboot loader/bootloader/fastboot > misc partition "recovery" > reboot xxx.
 	 */
+#ifdef CONFIG_ADV_SYSTEM_BACKUP
+	env_update("bootargs", "adv_bootprocess.early_enable=1");
+#endif
+
 	reg_boot_mode = readl((void *)CONFIG_ROCKCHIP_BOOT_MODE_REG);
 	if (reg_boot_mode == BOOT_LOADER) {
 		printf("boot mode: loader\n");
@@ -166,6 +220,15 @@ int rockchip_get_boot_mode(void)
 		printf("boot mode: bootloader\n");
 		boot_mode[PH] = BOOT_MODE_BOOTLOADER;
 		clear_boot_reg = 1;
+#ifdef CONFIG_ADV_SYSTEM_BACKUP
+	} else if (reg_boot_mode == BOOT_BACKUP) {
+		printf("boot mode: backup\n");
+		boot_mode = BOOT_MODE_RECOVERY;
+		clear_boot_reg = 1;
+		adv_set_backup_mode();
+		env_delete("bootargs","adv_bootprocess.early_enable",0);
+		env_update("bootargs", "adv_bootprocess.early_enable=0");
+#endif
 	} else if (misc_require_recovery(bcb_offset, &recovery_msg)) {
 		printf("boot mode: recovery (misc)\n");
 		boot_mode[PM] = BOOT_MODE_RECOVERY;

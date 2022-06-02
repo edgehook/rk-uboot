@@ -62,6 +62,9 @@ struct rockchip_image {
 #define PART_SYSTEM			"system"
 #define PART_METADATA			"metadata"
 #define PART_USERDATA			"userdata"
+#ifdef CONFIG_TARGET_ADVANTECH_RK3399
+#define BOARD_INFO_NAME   "board_info"
+#endif
 
 struct blk_desc *rockchip_get_bootdev(void);
 void rockchip_set_bootdev(struct blk_desc *desc);

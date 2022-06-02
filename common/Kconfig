@@ -682,5 +682,10 @@ config HASH
 
 endmenu
 
+config ADV_SYSTEM_BACKUP
+        bool "Support Advantech system backup"
+        help
+          This enable support Advantech system backup.
+
 source "common/spl/Kconfig"
 source "common/usbplug/Kconfig"

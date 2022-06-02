@@ -53,6 +53,9 @@
 #ifdef CONFIG_ROCKCHIP_EINK_DISPLAY
 #include <rk_eink.h>
 #endif
+#ifdef CONFIG_TARGET_ADVANTECH_RK3399
+#include <malloc.h>
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -1032,6 +1035,392 @@ void board_quiesce_devices(void *images)
 #endif
 }
 
+#ifdef CONFIG_TARGET_ADVANTECH_RK3399
+int fdtdec_get_alias_node(void *blob, const char *name)
+{
+	const char *prop;
+	int alias_node;
+	int len;
+
+	if (!blob)
+		return -FDT_ERR_BADPATH;
+	alias_node = fdt_path_offset(blob, "/aliases");
+	prop = fdt_getprop(blob, alias_node, name, &len);
+	if (!prop)
+		return -FDT_ERR_BADPATH;
+	return fdt_path_offset(blob, prop);
+}
+
+void adv_enable_status_by_alias_node(void *blob, const char *name)
+{
+	int node;
+	int err;
+	node = fdtdec_get_alias_node(blob, name);
+	if(node > 0)
+	{
+		err = fdt_setprop(blob, node, "status", "okay",sizeof("okay"));
+		if(err < 0)
+			printf("Enable %s status err = %d \n", name, err);
+	}
+	else
+	{
+		printf("Get %s status okay failed \n", name);
+	}
+}
+
+void adv_disable_status_by_alias_node(void *blob, const char *name)
+{
+	int node;
+	int err;
+	node = fdtdec_get_alias_node(blob, name);
+	if(node > 0)
+	{
+		err = fdt_setprop(blob, node, "status", "disabled",sizeof("disabled"));
+		if(err < 0)
+			printf("Disabled %s status err = %d \n", name, err);
+	}
+	else
+	{
+		printf("Get %s status disabled failed \n", name);
+	}
+}
+
+extern int fdt_node_offset_by_phandle_node(const void *fdt, int node, uint32_t phandle);
+static void adv_parse_drm_env(void *fdt)
+{
+	char *p, *e;
+	int node,node1,node2;
+	int use_dts_screen=0;
+	int phandle;
+
+	node = fdt_path_offset(fdt, "/display-timings");
+	use_dts_screen = fdtdec_get_int(fdt, node, "use-dts-screen", 0);
+	if(env_get("use_env_screen") != NULL || !use_dts_screen){
+		p = env_get("prmry_screen");
+		e = env_get("extend_screen");
+		if(!p || !e) {
+			phandle = fdt_getprop_u32_default_node(fdt, node, 0, "native-mode", -1);
+			if(-1 != phandle) {
+				node = fdt_node_offset_by_phandle_node(fdt, node, phandle);
+				env_set("extend_screen",fdt_get_name(fdt, node, NULL));
+			} else 
+				env_set("extend_screen","edp-default");
+
+			env_set("prmry_screen","hdmi-default");
+		}
+	} else {
+		phandle = fdt_getprop_u32_default_node(fdt, node, 0, "extend-screen", -1);
+		if(-1 != phandle) {
+			node2 = fdt_node_offset_by_phandle_node(fdt, node, phandle);
+			env_set("extend_screen",fdt_get_name(fdt, node2, NULL));
+		}else {
+			env_set("extend_screen","edp-default");
+		}
+
+		phandle = fdt_getprop_u32_default_node(fdt, node, 0, "prmry-screen", -1);
+		if(-1 != phandle) {
+			node1 = fdt_node_offset_by_phandle_node(fdt, node, phandle);
+			env_set("prmry_screen",fdt_get_name(fdt, node1, NULL));
+		}else {
+			env_set("prmry_screen","hdmi-default");
+		}
+	}
+}
+
+static void adv_set_lcd_node(void *blob)
+{
+	char *e,*p;
+	int node;
+	int enable_vopb = 0;
+	char *pwm;
+	unsigned long clock;
+	u32 array[4];
+
+	node = fdt_path_offset(blob, "/fdt_dummy");
+	if(node)
+		fdt_delprop(blob, node, "value");
+
+	p = env_get("prmry_screen");
+	e = env_get("extend_screen");
+	if(p && e) {
+		// enable hdmi
+		// hdmi hdmi_in_vopb hdmi_in_vopl
+		// route_hdmi
+		if(!memcmp(p,"hdmi",4) || !memcmp(e,"hdmi",4)) {
+			adv_enable_status_by_alias_node(blob, "hdmi");
+			adv_enable_status_by_alias_node(blob, "hdmi_in_vopb");
+			adv_disable_status_by_alias_node(blob, "hdmi_in_vopl");
+			enable_vopb = 1;
+			//if(!memcmp(p,"hdmi",4))
+			//	adv_enable_status_by_alias_node(blob, "hdmi_route");
+		} else {
+			adv_disable_status_by_alias_node(blob, "hdmi");
+			adv_disable_status_by_alias_node(blob, "hdmi_in_vopb");
+			adv_disable_status_by_alias_node(blob, "hdmi_in_vopl");
+			adv_disable_status_by_alias_node(blob, "hdmi_sound");
+			adv_disable_status_by_alias_node(blob, "hdmi_i2s");
+			adv_disable_status_by_alias_node(blob, "hdmi_route");
+		}
+
+		// enable dp
+		// cdn_dp dp_in_vopb dp_in_vopl
+		if(!memcmp(p,"dp",2) || !memcmp(e,"dp",2)) {
+			adv_enable_status_by_alias_node(blob, "dp");
+			adv_enable_status_by_alias_node(blob, "vpd");
+			adv_disable_status_by_alias_node(blob, "dp_in_vopb");
+			adv_disable_status_by_alias_node(blob, "dp_in_vopl");
+			if(enable_vopb)
+				adv_enable_status_by_alias_node(blob, "dp_in_vopl");
+			else
+			{
+				adv_enable_status_by_alias_node(blob, "dp_in_vopb");
+				enable_vopb = 1;
+			}
+		} else {
+			adv_disable_status_by_alias_node(blob, "dp");
+			adv_disable_status_by_alias_node(blob, "vpd");
+			adv_disable_status_by_alias_node(blob, "dp_in_vopb");
+			adv_disable_status_by_alias_node(blob, "dp_in_vopl");
+
+			node = fdtdec_get_alias_node(blob, "dp_phy");
+			if(node)
+				fdt_delprop(blob, node, "extcon");
+		}
+
+		// enable edp
+		// edp edp_phy edp_panel edp_in_vopb edp_in_vopl
+		// backlight
+		// route_edp
+		if(!memcmp(p,"edp",3) || !memcmp(e,"edp",3)) {
+			adv_enable_status_by_alias_node(blob, "edp");
+			adv_enable_status_by_alias_node(blob, "edp_panel");
+			adv_disable_status_by_alias_node(blob, "edp_in_vopb");
+			adv_disable_status_by_alias_node(blob, "edp_in_vopl");
+			if(enable_vopb)
+				adv_enable_status_by_alias_node(blob, "edp_in_vopl");
+			else
+			{
+				adv_enable_status_by_alias_node(blob, "edp_in_vopb");
+				enable_vopb = 1;
+			}
+			adv_enable_status_by_alias_node(blob, "edp_backlight");
+			adv_enable_status_by_alias_node(blob, "edp_vcc");
+			adv_enable_status_by_alias_node(blob, "edp_bkl_vdd");
+			//if(!memcmp(p,"edp",3))
+			//	adv_enable_status_by_alias_node(blob, "edp_route");
+			//else
+			{
+				node = fdtdec_get_alias_node(blob, "edp_vcc");
+				if(node)
+				{
+					fdt_delprop(blob, node, "regulator-always-on");
+					fdt_delprop(blob, node, "regulator-boot-on");
+				}
+				node = fdtdec_get_alias_node(blob, "edp_bkl_vdd");
+				if(node)
+				{
+					fdt_delprop(blob, node, "regulator-always-on");
+					fdt_delprop(blob, node, "regulator-boot-on");
+				}
+			}
+		} else {
+			adv_disable_status_by_alias_node(blob, "edp");
+			adv_disable_status_by_alias_node(blob, "edp_panel");
+			adv_disable_status_by_alias_node(blob, "edp_in_vopb");
+			adv_disable_status_by_alias_node(blob, "edp_in_vopl");
+			adv_disable_status_by_alias_node(blob, "edp_backlight");
+			adv_disable_status_by_alias_node(blob, "edp_vcc");
+			adv_disable_status_by_alias_node(blob, "edp_bkl_vdd");
+			adv_disable_status_by_alias_node(blob, "edp_route");
+		}
+
+		// enable lvds
+		// dsi dsi_in_vopb dsi_in_vopl
+		// backlight
+		// route_dsi
+		if(!memcmp(p,"lvds",4) || !memcmp(e,"lvds",4)) {
+			adv_enable_status_by_alias_node(blob, "dsi");
+			adv_enable_status_by_alias_node(blob, "dsi_backlight");
+			adv_enable_status_by_alias_node(blob, "dsi_vcc");
+			adv_enable_status_by_alias_node(blob, "dsi_vcc_io");
+			adv_enable_status_by_alias_node(blob, "lvds_pwr_vcc");
+			adv_enable_status_by_alias_node(blob, "lvds_bkl_vcc");
+			adv_disable_status_by_alias_node(blob, "dsi_in_vopb");
+			adv_disable_status_by_alias_node(blob, "dsi_in_vopl");
+			if(enable_vopb)
+				adv_enable_status_by_alias_node(blob, "dsi_in_vopl");
+			else
+			{
+				adv_enable_status_by_alias_node(blob, "dsi_in_vopb");
+				enable_vopb = 1;
+			}
+
+			//if(!memcmp(p,"lvds",4))
+			//	adv_enable_status_by_alias_node(blob, "dsi_route");
+			//else
+			{
+				node = fdtdec_get_alias_node(blob, "dsi_vcc");
+				if(node)
+				{
+					fdt_delprop(blob, node, "regulator-always-on");
+					fdt_delprop(blob, node, "regulator-boot-on");
+				}
+				node = fdtdec_get_alias_node(blob, "dsi_vcc_io");
+				if(node)
+				{
+					fdt_delprop(blob, node, "regulator-always-on");
+					fdt_delprop(blob, node, "regulator-boot-on");
+				}
+				node = fdtdec_get_alias_node(blob, "lvds_pwr_vcc");
+				if(node)
+				{
+					fdt_delprop(blob, node, "regulator-always-on");
+					fdt_delprop(blob, node, "regulator-boot-on");
+				}
+				node = fdtdec_get_alias_node(blob, "lvds_bkl_vcc");
+				if(node)
+				{
+					fdt_delprop(blob, node, "regulator-always-on");
+					fdt_delprop(blob, node, "regulator-boot-on");
+				}
+			}
+		} else {
+			adv_disable_status_by_alias_node(blob, "dsi");
+			adv_disable_status_by_alias_node(blob, "dsi_in_vopb");
+			adv_disable_status_by_alias_node(blob, "dsi_in_vopl");
+			adv_disable_status_by_alias_node(blob, "dsi_route");
+		#ifdef CONFIG_ADV_EDP_LVDS_USE_THE_SAME_RESOURCE
+			if(!memcmp(p,"edp",3) || !memcmp(e,"edp",3)) {
+				//don't disable vcc & blk
+			}
+			else
+		#endif
+			{
+				adv_disable_status_by_alias_node(blob, "dsi_backlight");
+				adv_disable_status_by_alias_node(blob, "dsi_vcc");
+				adv_disable_status_by_alias_node(blob, "dsi_vcc_io");
+				adv_disable_status_by_alias_node(blob, "lvds_pwr_vcc");
+				adv_disable_status_by_alias_node(blob, "lvds_bkl_vcc");
+			}
+
+		}
+#ifdef CONFIG_CUSTOM_GY_SPECIFIC_OPTIONS
+		//if(!memcmp(p,"hdmi",4) && !memcmp(e,"null",4))
+		{
+			//enable LVDS backlight
+			adv_enable_status_by_alias_node(blob, "dsi_backlight");
+			adv_enable_status_by_alias_node(blob, "lvds_bkl_vcc");
+			node = fdtdec_get_alias_node(blob, "dsi_backlight");
+			fdt_setprop_u32(blob, node, "default-enable", 1);
+			//enable eDP backlight
+			adv_enable_status_by_alias_node(blob, "edp_backlight");
+			adv_enable_status_by_alias_node(blob, "edp_bkl_vdd");
+			node = fdtdec_get_alias_node(blob, "edp_backlight");
+			fdt_setprop_u32(blob, node, "default-enable", 1);
+		}
+#endif
+
+		pwm = env_get("lvds_pwm_clock");
+		if(pwm) {
+			clock = simple_strtoul(pwm, NULL, 10);
+			if((clock >= 200) && (clock <= 20000)) {
+				fdt32_t cells[4];
+				node =  fdtdec_get_alias_node(blob, "dsi_backlight");
+				if(4 == fdtdec_get_int_array_count(blob, node, "pwms", array, 4)) {
+					cells[0] = cpu_to_fdt32(array[0]);
+					cells[1] = cpu_to_fdt32(array[1]);
+					cells[2] = cpu_to_fdt32(1000000000/clock);
+					cells[3] = cpu_to_fdt32(array[3]);
+					fdt_setprop(blob, node, "pwms", cells, sizeof(cells[0]) * 4);
+				}
+			}
+		}
+
+		pwm = env_get("edp_pwm_clock");
+		if(pwm) {
+			clock = simple_strtoul(pwm, NULL, 10);
+			if((clock >= 200) && (clock <= 20000)) {
+				fdt32_t cells[4];
+				node =  fdtdec_get_alias_node(blob, "edp_backlight");
+				if(4 == fdtdec_get_int_array_count(blob, node, "pwms", array, 4)) {
+					cells[0] = cpu_to_fdt32(array[0]);
+					cells[1] = cpu_to_fdt32(array[1]);
+					cells[2] = cpu_to_fdt32(1000000000/clock);
+					cells[3] = cpu_to_fdt32(array[3]);
+					fdt_setprop(blob, node, "pwms", cells, sizeof(cells[0]) * 4);
+				}
+			}
+		}
+	}
+}
+
+static void adv_parse_uio_env(void *fdt)
+{
+	char *uio_env;
+	char uio_name[32];
+	int uio_default;
+	int node;
+	//int phandle;
+	uio_env = env_get("uio");
+	if(uio_env)
+		return;
+
+	node = fdt_path_offset(fdt, "/adv-uio");
+	uio_default = fdtdec_get_int(fdt, node, "uio-default", 0);
+
+	if(uio_default == 0){
+		env_set("uio","standard");
+	}else{
+		sprintf(uio_name, "%d", uio_default);
+		env_set("uio", uio_name);
+	}
+}
+
+static void adv_set_uio_node(void *blob)
+{
+	char *uio_env;
+
+	uio_env = env_get("uio");
+	if(uio_env) {
+		if(!memcmp(uio_env,"4030",4)) {
+			adv_disable_status_by_alias_node(blob, "uio_gpio_standard");
+			adv_enable_status_by_alias_node(blob, "uio_gpio_4030");
+			adv_disable_status_by_alias_node(blob, "uio_gpio_4032");
+			adv_disable_status_by_alias_node(blob, "uio_gpio_4034");
+			adv_disable_status_by_alias_node(blob, "uio_gpio_4036");
+			adv_disable_status_by_alias_node(blob, "rtl8367");
+		}
+
+		if(!memcmp(uio_env,"4032",4)) {
+			adv_disable_status_by_alias_node(blob, "uio_gpio_standard");
+			adv_disable_status_by_alias_node(blob, "uio_gpio_4030");
+			adv_enable_status_by_alias_node(blob, "uio_gpio_4032");
+			adv_disable_status_by_alias_node(blob, "uio_gpio_4034");
+			adv_disable_status_by_alias_node(blob, "uio_gpio_4036");
+			adv_disable_status_by_alias_node(blob, "rtl8367");
+		}
+
+		if(!memcmp(uio_env,"4034",4)) {
+			adv_disable_status_by_alias_node(blob, "uio_gpio_standard");
+			adv_disable_status_by_alias_node(blob, "uio_gpio_4030");
+			adv_disable_status_by_alias_node(blob, "uio_gpio_4032");
+			adv_enable_status_by_alias_node(blob, "uio_gpio_4034");
+			adv_disable_status_by_alias_node(blob, "uio_gpio_4036");
+			adv_disable_status_by_alias_node(blob, "rtl8367");
+		}
+
+		if(!memcmp(uio_env,"4036",4)) {
+			adv_disable_status_by_alias_node(blob, "uio_gpio_standard");
+			adv_disable_status_by_alias_node(blob, "uio_gpio_4030");
+			adv_disable_status_by_alias_node(blob, "uio_gpio_4032");
+			adv_disable_status_by_alias_node(blob, "uio_gpio_4034");
+			adv_enable_status_by_alias_node(blob, "uio_gpio_4036");
+			adv_enable_status_by_alias_node(blob, "rtl8367");
+		}
+	}
+}
+#endif
+
 char *board_fdt_chosen_bootargs(void *fdt)
 {
 	/* bootargs_ext is used when dtbo is applied. */
@@ -1040,6 +1429,15 @@ char *board_fdt_chosen_bootargs(void *fdt)
 	int nodeoffset;
 	int i, dump;
 	char *msg = "kernel";
+#ifdef CONFIG_TARGET_ADVANTECH_RK3399
+	char  *str;		/* used to set string properties */
+	char command_line[1024],*e,*p;
+	uint len;
+	const char *prop = NULL;
+	uint enable_phy_delay,tx_delay,rx_delay;
+	int phandle;
+	u32 pinctl_array[2];
+#endif
 
 	/* debug */
 	hotkey_run(HK_INITCALL);
@@ -1127,6 +1525,189 @@ char *board_fdt_chosen_bootargs(void *fdt)
 			printf("## bootargs(android): %s\n\n", env_get("andr_bootargs"));
 	}
 #endif
+
+#ifdef CONFIG_TARGET_ADVANTECH_RK3399
+	str = env_get("bootargs");
+	if(env_get("switch_debug")){
+		//parse earlycon
+		memset(command_line,0,sizeof(command_line));
+		p = str;
+		e = p;
+		p = strstr(p,"earlycon=");
+		strncpy(command_line, e, p-e);
+		len = strlen(command_line);
+		p = strstr(p," ");
+		strncpy(command_line+len, p, strlen(p));
+		command_line[strlen(command_line)] = '\0';
+		env_set("bootargs", command_line);
+
+		//parse console
+		str = env_get("bootargs");
+		memset(command_line,0,sizeof(command_line));
+		p = str;
+		e = p;
+		p = strstr(p,"console=");
+		strncpy(command_line, e, p-e);
+		snprintf(command_line, strlen(command_line)+sizeof("console=/dev/null"),
+					"%sconsole=%s", command_line, "/dev/null");
+		len = strlen(command_line);
+		p = strstr(p," ");
+		strncpy(command_line+len, p, strlen(p));
+		command_line[strlen(command_line)] = '\0';
+		env_set("bootargs", command_line);
+
+		//disable ttyFIQ0
+		adv_enable_status_by_alias_node(fdt, "serial2");
+		adv_disable_status_by_alias_node(fdt, "debug_console");
+		str = env_get("bootargs");
+	}
+
+	if(env_get("androidboot.serialno")){
+		str = env_get("bootargs");
+		memset(command_line,0,sizeof(command_line));
+		memcpy(command_line,str,strlen(str));
+		strcat(command_line, " androidboot.serialno=");
+		strcat(command_line, env_get("androidboot.serialno"));
+		env_set("bootargs", command_line);
+	}
+
+	if(env_get("androidboot.factorytime")){
+		str = env_get("bootargs");
+		memset(command_line,0,sizeof(command_line));
+		memcpy(command_line,str,strlen(str));
+		strcat(command_line, " androidboot.factorytime=");
+		strcat(command_line, env_get("androidboot.factorytime"));
+		env_set("bootargs", command_line);
+	}
+	
+	if(env_get("uart_mode")){
+		e = env_get("bootargs");
+		memset(command_line,0,sizeof(command_line));
+		memcpy(command_line,e,strlen(e));
+		strcat(command_line, " uart_mode=");
+		strcat(command_line, env_get("uart_mode"));
+		env_set("bootargs", command_line);
+	}
+
+	if(env_get("eth1addr")){
+		e = env_get("bootargs");
+		memset(command_line,0,sizeof(command_line));
+		memcpy(command_line,e,strlen(e));
+		strcat(command_line, " usblan_addr=");
+		strcat(command_line, env_get("eth1addr"));
+		env_set("bootargs", command_line);
+	}
+
+	//append quiet to bootargs
+	//e = env_get("bootargs");
+	//memset(command_line,0,sizeof(command_line));
+	//memcpy(command_line,e,strlen(e));
+	//strcat(command_line, " quiet");
+	//env_set("bootargs", command_line);
+
+	prop = fdt_getprop(fdt, 0, "model", NULL);
+	if(prop){
+		memset(command_line,0,sizeof(command_line));
+
+		p = env_get("boardsn");
+		e = strstr(prop," ");
+		memcpy(command_line,prop,e-prop);
+		if(p){
+			strcat(command_line, " ");
+			strcat(command_line, p);
+		} else {
+			//strcat(command_line, " unknown");
+			e = strrchr(prop,' ');
+			memcpy(command_line,prop,e-prop);
+		}
+
+		e = env_get("swversion");
+		if(e){
+			strcat(command_line, " ");
+			strcat(command_line, e);
+		} else {
+			p = strstr(prop," V");
+			e = strrchr(p,' ');
+			strncat(command_line, p, e-p);
+		}
+
+		e = env_get("hwversion");
+		if(e){
+			strcat(command_line, " ");
+			strcat(command_line, e);
+		} else {
+			e = strrchr(prop,' ');
+			if(strstr(e," A")) {
+				strcat(command_line, e);
+			}
+		}
+
+		fdt_setprop(fdt, 0, "model", command_line,strlen(command_line)+1);
+	}else
+		printf("can't find model node\n");
+
+	// fix gmac's properties for different hw version
+	// just for chuanda board
+	e = env_get("hwversion");
+	if(!e){
+		nodeoffset = fdtdec_get_alias_node(fdt, "ethernet0");
+		if(nodeoffset) {
+			enable_phy_delay = fdtdec_get_uint(fdt, nodeoffset, "enable_phy_delay", 1);
+			if(!enable_phy_delay) {
+				tx_delay = fdtdec_get_uint(fdt, nodeoffset, "tx_delay1", 0);
+				if(tx_delay)
+					fdt_setprop_u32(fdt, nodeoffset, "tx_delay", tx_delay);
+				rx_delay = fdtdec_get_uint(fdt, nodeoffset, "rx_delay1", 0);
+				if(rx_delay)
+					fdt_setprop_u32(fdt, nodeoffset, "rx_delay", rx_delay);
+
+				if(tx_delay && rx_delay && 
+				  (2 == fdtdec_get_int_array_count(fdt, nodeoffset, "pinctrl-0", pinctl_array, 2))) {
+					fdt32_t cells[2];
+					i = fdt_path_offset(fdt, "/pinctrl/gmac/rgmii-pins");
+					phandle = fdt_get_phandle(fdt, i);
+					if(phandle > 0) {
+						pinctl_array[0] = phandle;
+						cells[0] = cpu_to_fdt32(pinctl_array[0]);
+						cells[1] = cpu_to_fdt32(pinctl_array[1]);
+						fdt_setprop(fdt, nodeoffset, "pinctrl-0", cells, sizeof(cells[0]) * 2);
+					}
+				}
+			}
+		}
+	}
+
+	// set screen begin
+	adv_parse_drm_env(fdt);
+	e = env_get("bootargs");
+	memset(command_line,0,sizeof(command_line));
+	memcpy(command_line,e,strlen(e));
+	strcat(command_line, " board_info=9");
+
+	p = env_get("prmry_screen");
+	e = env_get("extend_screen");
+	if(p){
+		strcat(command_line, " prmry_screen=");
+		strcat(command_line, p);
+		env_set("bootargs", command_line);
+	}
+	if(e){
+		strcat(command_line, " extend_screen=");
+		strcat(command_line, e);
+		env_set("bootargs", command_line);
+	}
+	if(p || e)
+		adv_set_lcd_node(fdt);
+
+
+	adv_parse_uio_env(fdt);
+	adv_set_uio_node(fdt);
+	/* find or create "/chosen" node. */
+	nodeoffset = fdt_find_or_add_subnode(fdt, 0, "chosen");
+	if (nodeoffset < 0)
+		return (char *)bootargs;
+#endif
+
 	bootargs = env_get("bootargs");
 	if (dump)
 		printf("## bootargs(merged): %s\n\n", bootargs);
