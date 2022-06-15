@@ -364,12 +364,15 @@ int fdt_chosen(void *fdt)
 		return err;
 	}
 
-	/* find or create "/chosen" node. */
+	str = board_fdt_chosen_bootargs(fdt);
+	/*
+	* we call fdt_find_or_add_subnode in here since board_fdt_chosen_bootargs
+	* may add some fdt node and the nodeoffset can be changed.
+	*/
 	nodeoffset = fdt_find_or_add_subnode(fdt, 0, "chosen");
 	if (nodeoffset < 0)
 		return nodeoffset;
 
-	str = board_fdt_chosen_bootargs(fdt);
 	if (str) {
 		err = fdt_setprop(fdt, nodeoffset, "bootargs", str,
 				  strlen(str) + 1);

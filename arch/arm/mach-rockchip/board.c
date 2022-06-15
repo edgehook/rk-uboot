@@ -1702,10 +1702,6 @@ char *board_fdt_chosen_bootargs(void *fdt)
 
 	adv_parse_uio_env(fdt);
 	adv_set_uio_node(fdt);
-	/* find or create "/chosen" node. */
-	nodeoffset = fdt_find_or_add_subnode(fdt, 0, "chosen");
-	if (nodeoffset < 0)
-		return (char *)bootargs;
 #endif
 
 	bootargs = env_get("bootargs");
