@@ -1610,39 +1610,13 @@ char *board_fdt_chosen_bootargs(void *fdt)
 		memset(command_line,0,sizeof(command_line));
 
 		p = env_get("boardsn");
-		e = strstr(prop," ");
-		memcpy(command_line,prop,e-prop);
 		if(p){
+			memcpy(command_line, prop, strlen(prop));
 			strcat(command_line, " ");
 			strcat(command_line, p);
-		} else {
-			//strcat(command_line, " unknown");
-			e = strrchr(prop,' ');
-			memcpy(command_line,prop,e-prop);
-		}
 
-		e = env_get("swversion");
-		if(e){
-			strcat(command_line, " ");
-			strcat(command_line, e);
-		} else {
-			p = strstr(prop," V");
-			e = strrchr(p,' ');
-			strncat(command_line, p, e-p);
+			fdt_setprop(fdt, 0, "model", command_line, strlen(command_line)+1);
 		}
-
-		e = env_get("hwversion");
-		if(e){
-			strcat(command_line, " ");
-			strcat(command_line, e);
-		} else {
-			e = strrchr(prop,' ');
-			if(strstr(e," A")) {
-				strcat(command_line, e);
-			}
-		}
-
-		fdt_setprop(fdt, 0, "model", command_line,strlen(command_line)+1);
 	}else
 		printf("can't find model node\n");
 
