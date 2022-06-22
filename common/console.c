@@ -774,10 +774,16 @@ int console_announce_r(void)
 {
 #if !CONFIG_IS_ENABLED(PRE_CONSOLE_BUFFER)
 	char buf[DISPLAY_OPTIONS_BANNER_LENGTH];
-
+#ifdef CONFIG_TARGET_ADVANTECH_RK3399
+	display_options_get_banner(true, buf, sizeof(buf));
+#else
 	display_options_get_banner(false, buf, sizeof(buf));
+#endif
 
 	console_puts_noserial(stdout, buf);
+#ifdef CONFIG_TARGET_ADVANTECH_RK3399
+	console_puts(stdout, buf);
+#endif
 #endif
 
 	return 0;
