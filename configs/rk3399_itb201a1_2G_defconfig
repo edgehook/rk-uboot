@@ -21,6 +21,8 @@ CONFIG_SYS_SOC="rockchip"
 CONFIG_SYS_VENDOR="rockchip"
 CONFIG_SYS_BOARD="advantech"
 CONFIG_SYS_CONFIG_NAME="rk3399_itb201"
+# CONFIG_ROCKCHIP_SET_ETHADDR is not set
+# CONFIG_ROCKCHIP_SET_SN is not set
 
 #
 # ARM architecture

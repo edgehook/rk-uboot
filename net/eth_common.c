@@ -34,8 +34,10 @@ int eth_env_set_enetaddr(const char *name, const uchar *enetaddr)
 {
 	char buf[ARP_HLEN_ASCII + 1];
 
+#ifndef CONFIG_TARGET_ADVANTECH_RK3399
 	if (eth_env_get_enetaddr(name, (uchar *)buf))
 		return -EEXIST;
+#endif
 
 	sprintf(buf, "%pM", enetaddr);
 
