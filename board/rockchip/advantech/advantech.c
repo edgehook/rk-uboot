@@ -35,8 +35,12 @@ DECLARE_GLOBAL_DATA_PTR;
 
 int board_early_init_f(void)
 {
+#if defined(DEBUG2UART_GPIO) || defined(ADV_GRF_IO_VSEL)
 	struct rk3399_grf_regs * const grf = (void *)GRF_BASE;
+#endif
+#if defined(DEBUG2UART_GPIO) || defined(DISABLE_MSP430)
 	struct rk3399_pmugrf_regs *pmugrf = (void *)PMUGRF_BASE;
+#endif
 	struct rockchip_gpio_regs *gpio = NULL;
 #ifdef ADV_GRF_IO_VSEL
 	grf->io_vsel = ADV_GRF_IO_VSEL;
@@ -61,6 +65,9 @@ int board_early_init_f(void)
 		gd->flags &= ~GD_FLG_DISABLE_CONSOLE;
 		grf->gpio4c_iomux = (0xf << 22) | (0x5 << 6);
 	}
+#else
+	//Enable the console.
+	gd->flags &= ~GD_FLG_DISABLE_CONSOLE;
 #endif
 
 #ifdef DISABLE_MSP430
@@ -115,26 +122,26 @@ int rk_board_init(void)
 	 */
 	ret = uclass_get_device(UCLASS_PINCTRL, 0, &pinctrl);
 	if (ret) {
-		printf("%s: Cannot find pinctrl device\n", __func__);
+		debug("%s: Cannot find pinctrl device\n", __func__);
 		goto out;
 	}
 
 	/* Enable pwm0 for panel backlight */
 	ret = pinctrl_request_noflags(pinctrl, PERIPH_ID_PWM0);
 	if (ret) {
-		printf("%s PWM0 pinctrl init fail! (ret=%d)\n", __func__, ret);
+		debug("%s PWM0 pinctrl init fail! (ret=%d)\n", __func__, ret);
 		goto out;
 	}
 
 	ret = pinctrl_request_noflags(pinctrl, PERIPH_ID_PWM1);
 	if (ret) {
-		printf("%s PWM1 pinctrl init fail!\n", __func__);
+		debug("%s PWM1 pinctrl init fail!\n", __func__);
 		goto out;
 	}
 
 	ret = pinctrl_request_noflags(pinctrl, PERIPH_ID_PWM2);
 	if (ret) {
-		printf("%s PWM2 pinctrl init fail!\n", __func__);
+		debug("%s PWM2 pinctrl init fail!\n", __func__);
 		goto out;
 	}
 

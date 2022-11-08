@@ -964,8 +964,8 @@ int console_init_r(void)
 		console_setfile(stdout, outputdev);
 		console_setfile(stderr, outputdev);
 #if CONFIG_IS_ENABLED(CONSOLE_MUX)
-		console_devices[stdout][0] = outputdev;
-		console_devices[stderr][0] = outputdev;
+		console_doenv(stdout, outputdev);
+		console_doenv(stderr, outputdev);
 #endif
 	}
 
@@ -973,7 +973,7 @@ int console_init_r(void)
 	if (inputdev != NULL) {
 		console_setfile(stdin, inputdev);
 #if CONFIG_IS_ENABLED(CONSOLE_MUX)
-		console_devices[stdin][0] = inputdev;
+		console_doenv(stdin, inputdev);
 #endif
 	}
 
