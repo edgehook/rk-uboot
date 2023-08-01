@@ -219,7 +219,7 @@ int rk_board_late_init(void)
 	gpio_request(DEBUG2UART_GPIO,"DEBUG2UART_GPIO");
 	gpio_direction_input(DEBUG2UART_GPIO);
 	if (gpio_get_value(DEBUG2UART_GPIO) == DEBUG2UART_GPIO_ACTIVE)
-		env_set("switch_debug",NULL);
+		env_set("switch_debug","yes");
 	else
 		env_set("switch_debug",NULL);
 	gpio_free(DEBUG2UART_GPIO);

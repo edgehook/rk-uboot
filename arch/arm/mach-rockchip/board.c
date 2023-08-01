@@ -1530,16 +1530,16 @@ char *board_fdt_chosen_bootargs(void *fdt)
 	str = env_get("bootargs");
 	if(env_get("switch_debug")){
 		//parse earlycon
-		memset(command_line,0,sizeof(command_line));
-		p = str;
-		e = p;
-		p = strstr(p,"earlycon=");
-		strncpy(command_line, e, p-e);
-		len = strlen(command_line);
-		p = strstr(p," ");
-		strncpy(command_line+len, p, strlen(p));
-		command_line[strlen(command_line)] = '\0';
-		env_set("bootargs", command_line);
+		// memset(command_line,0,sizeof(command_line));
+		// p = str;
+		// e = p;
+		// p = strstr(p,"earlycon=");
+		// strncpy(command_line, e, p-e);
+		// len = strlen(command_line);
+		// p = strstr(p," ");
+		// strncpy(command_line+len, p, strlen(p));
+		// command_line[strlen(command_line)] = '\0';
+		// env_set("bootargs", command_line);
 
 		//parse console
 		str = env_get("bootargs");
